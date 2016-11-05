@@ -94,9 +94,13 @@ public:
 		raptor_free_world(world);
 	}
 
-	void start(raptor_uri* with_base_uri) {
+	void start(raptor_uri* with_base_uri, char** output) {
 		base_uri = raptor_new_uri_relative_to_base(world, with_base_uri, (const unsigned char*)"./");
-		raptor_serializer_start_to_file_handle(serializer, base_uri, stdout);
+		raptor_serializer_start_to_string(serializer, base_uri, (void**)output, NULL);
+	}
+
+	void end() {
+		raptor_serializer_serialize_end(serializer);
 	}
 
 	void add_triple(raptor_term* subject, raptor_term* predicate, raptor_term* object) {
@@ -126,30 +130,23 @@ private:
 	}
 };
 
-// Global variable (sorry, I don't know how to use C++)
-RDFState rdf_state;
-int annotation_ct = 1;
-
 class OACAnnotation {
 public:
 	raptor_term *annotation_term;
 	raptor_term *annotation_body_term;
 	raptor_term *annotation_target_term;
+	RDFState rdf_state;
 
-	raptor_uri* numbered_uri(std::string label) {
-		raptor_uri *uri;
+	OACAnnotation(raptor_term* pdf_term, int page_number, const char* motivation, bool body, int annotation_ct, RDFState state) {
+		raptor_uri *annotation_uri;
 
-		label += std::to_string(annotation_ct);
-		uri = rdf_state.make_relative_uri(label.c_str());
+		rdf_state = state;
 
-		return uri;
-	}
-
-	OACAnnotation(raptor_term* pdf_term, int page_number, const char* motivation, bool body = false) {
-		raptor_uri *annotation_uri = numbered_uri("#annotation");
+		std::string uri_label = "#annotation" + std::to_string(annotation_ct);
+		annotation_uri = rdf_state.make_relative_uri(uri_label.c_str());
 
 		annotation_term = raptor_new_term_from_uri(rdf_state.world, annotation_uri);
-			annotation_target_term = raptor_new_term_from_blank(rdf_state.world, NULL);
+		annotation_target_term = raptor_new_term_from_blank(rdf_state.world, NULL);
 
 		if (body) {
 			annotation_body_term = raptor_new_term_from_blank(rdf_state.world, NULL);
@@ -221,7 +218,8 @@ public:
 	}
 };
 
-void process_page(UnicodeMap *u_map, PDFDoc* doc, raptor_term* pdf_term, int page_number) {
+void process_page(UnicodeMap *u_map, PDFDoc* doc, raptor_term* pdf_term,
+		int page_number, int *annotation_ct, RDFState rdf_state) {
 	Page *page;
 	Annots *annots;
 	Annot *annot;
@@ -233,7 +231,7 @@ void process_page(UnicodeMap *u_map, PDFDoc* doc, raptor_term* pdf_term, int pag
 		annot = annots->getAnnot(j);
 
 		if (annot->getType() == Annot::typeText) {
-			OACAnnotation oac_annotation(pdf_term, page_number, "commenting", true);
+			OACAnnotation oac_annotation(pdf_term, page_number, "commenting", true, *annotation_ct, rdf_state);
 			rdf_state.add_triple(
 				raptor_term_copy(oac_annotation.annotation_body_term),
 				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::RDF, "Type").uri),
@@ -266,7 +264,7 @@ void process_page(UnicodeMap *u_map, PDFDoc* doc, raptor_term* pdf_term, int pag
 			AnnotStamp *stamp = static_cast<AnnotStamp *>(annot);
 			GooString *subject = stamp->getSubject();
 
-			OACAnnotation oac_annotation(pdf_term, page_number, "bookmarking", true);
+			OACAnnotation oac_annotation(pdf_term, page_number, "bookmarking", true, *annotation_ct, rdf_state);
 			rdf_state.add_triple(
 				raptor_term_copy(oac_annotation.annotation_body_term),
 				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::RDF, "Type").uri),
@@ -311,7 +309,7 @@ void process_page(UnicodeMap *u_map, PDFDoc* doc, raptor_term* pdf_term, int pag
 
 			std::replace(markup_text.begin(), markup_text.end(), '\n', ' ');
 
-			OACAnnotation oac_annotation(pdf_term, page_number, "highlighting");
+			OACAnnotation oac_annotation(pdf_term, page_number, "highlighting", false, *annotation_ct, rdf_state);
 
 			raptor_term* quote_selector_term = oac_annotation.add_selector("TextQuoteSelector");
 			rdf_state.add_triple(
@@ -339,42 +337,6 @@ void process_page(UnicodeMap *u_map, PDFDoc* doc, raptor_term* pdf_term, int pag
 	}
 }
 
-int main(int argc, char **argv) {
-	PDFDoc *doc;
-	GooString *filename;
-	unsigned char *pdf_uri_string;
-	raptor_uri *pdf_uri;
-	raptor_term *pdf_term;
-	UnicodeMap *uMap;
-
-	globalParams = new GlobalParams();
-	uMap = globalParams->getTextEncoding();
-
-	pdf_uri_string = raptor_uri_filename_to_uri_string(filename->getCString());
-	pdf_uri = raptor_new_uri(rdf_state.world, pdf_uri_string);
-	rdf_state.start(pdf_uri);
-
-	pdf_term = raptor_new_term_from_uri(rdf_state.world, pdf_uri);
-
-	rdf_state.add_triple(
-		pdf_term,
-		raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::RDF, "Type").uri),
-		raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::BIBO, "Document").uri));
-
-	for (int i = 1; i < doc->getNumPages(); ++i) {
-		process_page(uMap, doc, pdf_term, i);
-	}
-
-	// Clean up
-	uMap->decRefCnt();
-	delete globalParams;
-	delete filename;
-	delete doc;
-
-	raptor_free_memory(pdf_uri_string);
-	raptor_free_uri(pdf_uri);
-}
-
 namespace binding {
 	using v8::FunctionCallbackInfo;
 	using v8::Isolate;
@@ -386,6 +348,20 @@ namespace binding {
 
 	void GetAnnotations(const FunctionCallbackInfo<Value>& args) {
 		Isolate* isolate = args.GetIsolate();
+
+		PDFDoc *doc;
+		GooString *filename;
+		unsigned char *pdf_uri_string;
+		raptor_uri *pdf_uri;
+		raptor_term *pdf_term;
+		UnicodeMap *uMap;
+		char *output;
+
+		RDFState rdf_state;
+		int annotation_ct = 1;
+
+		globalParams = new GlobalParams();
+		uMap = globalParams->getTextEncoding();
 
 		if (args.Length() != 1) {
 			isolate->ThrowException(Exception::TypeError(
@@ -399,10 +375,6 @@ namespace binding {
 			return;
 		}
 
-		PDFDoc *doc;
-		GooString *filename;
-		// unsigned char *pdf_uri_string;
-
 		String::Utf8Value param(args[0]->ToString());
 
 		filename = new GooString(std::string(*param).c_str());
@@ -411,14 +383,37 @@ namespace binding {
 		if (!doc->isOk()) {
 			isolate->ThrowException(Exception::TypeError(
 				String::NewFromUtf8(isolate, "Could not open PDF at filename.")));
-			delete filename;
-			delete doc;
-			return;
+		} else {
+			pdf_uri_string = raptor_uri_filename_to_uri_string(filename->getCString());
+			pdf_uri = raptor_new_uri(rdf_state.world, pdf_uri_string);
+			rdf_state.start(pdf_uri, &output);
+
+			pdf_term = raptor_new_term_from_uri(rdf_state.world, pdf_uri);
+
+			rdf_state.add_triple(
+				pdf_term,
+				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::RDF, "Type").uri),
+				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::BIBO, "Document").uri));
+
+			for (int i = 1; i < doc->getNumPages(); ++i) {
+				// process_page(uMap, doc, pdf_term, i, &annotation_ct, rdf_state);
+			}
+
+			rdf_state.end();
+
+			// Process the document here!
+			args.GetReturnValue().Set(String::NewFromUtf8(isolate, output));
+
+			// Clean up
+			raptor_free_memory(pdf_uri_string);
+			raptor_free_uri(pdf_uri);
 		}
 
-		// Process the document here!
-
-		args.GetReturnValue().Set(String::NewFromUtf8(isolate, "world"));
+		// Clean up
+		uMap->decRefCnt();
+		delete globalParams;
+		delete filename;
+		delete doc;
 	}
 
 	void init(Local<Object> exports) {
