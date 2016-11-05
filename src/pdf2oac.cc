@@ -90,7 +90,6 @@ public:
 		raptor_free_uri(nsMap[NS::DC_TYPES]);
 		raptor_free_uri(base_uri);
 
-		raptor_free_serializer(serializer);
 		raptor_free_world(world);
 	}
 
@@ -135,65 +134,65 @@ public:
 	raptor_term *annotation_term;
 	raptor_term *annotation_body_term;
 	raptor_term *annotation_target_term;
-	RDFState rdf_state;
+	RDFState *rdf_state;
 
-	OACAnnotation(raptor_term* pdf_term, int page_number, const char* motivation, bool body, int annotation_ct, RDFState state) {
+	OACAnnotation(raptor_term* pdf_term, int page_number, const char* motivation, bool body, int annotation_ct, RDFState *state) {
 		raptor_uri *annotation_uri;
 
 		rdf_state = state;
 
 		std::string uri_label = "#annotation" + std::to_string(annotation_ct);
-		annotation_uri = rdf_state.make_relative_uri(uri_label.c_str());
+		annotation_uri = rdf_state->make_relative_uri(uri_label.c_str());
 
-		annotation_term = raptor_new_term_from_uri(rdf_state.world, annotation_uri);
-		annotation_target_term = raptor_new_term_from_blank(rdf_state.world, NULL);
+		annotation_term = raptor_new_term_from_uri(rdf_state->world, annotation_uri);
+		annotation_target_term = raptor_new_term_from_blank(rdf_state->world, NULL);
 
 		if (body) {
-			annotation_body_term = raptor_new_term_from_blank(rdf_state.world, NULL);
+			annotation_body_term = raptor_new_term_from_blank(rdf_state->world, NULL);
 		} else {
 			annotation_body_term = NULL;
 		}
 
-		rdf_state.add_triple(
-			annotation_term,
-			raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::RDF, "Type").uri),
-			raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::OA, "Annotation").uri));
-
-		rdf_state.add_triple(
+		rdf_state->add_triple(
 			raptor_term_copy(annotation_term),
-			raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::OA, "hasTarget").uri),
+			raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::RDF, "Type").uri),
+			raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::OA, "Annotation").uri));
+
+		rdf_state->add_triple(
+			raptor_term_copy(annotation_term),
+			raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::OA, "hasTarget").uri),
 			annotation_target_term);
 
-		rdf_state.add_triple(
+		rdf_state->add_triple(
 			raptor_term_copy(annotation_term),
-			raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::OA, "hasMotivation").uri),
-			raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::OA, motivation).uri));
+			raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::OA, "hasMotivation").uri),
+			raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::OA, motivation).uri));
 
-		rdf_state.add_triple(
+		rdf_state->add_triple(
 			raptor_term_copy(annotation_target_term),
-			raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::OA, "hasSource").uri),
+			raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::OA, "hasSource").uri),
 			raptor_term_copy(pdf_term));
 
 		raptor_term* fragment_selector_term = this->add_selector("FragmentSelector");
 		raptor_uri* pdf_fragment_standard_uri = raptor_new_uri(
-			rdf_state.world,
+			rdf_state->world,
 			(const unsigned char*)"http://tools.ietf.org/rfc/rfc3778");
 
 		std::string pdf_fragment = "#page=" + std::to_string(page_number);
-		rdf_state.add_triple(
+		rdf_state->add_triple(
 			raptor_term_copy(fragment_selector_term),
-			raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::OA, "conformsTo").uri),
-			raptor_new_term_from_uri(rdf_state.world, pdf_fragment_standard_uri));
+			raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::OA, "conformsTo").uri),
+			raptor_new_term_from_uri(rdf_state->world, pdf_fragment_standard_uri));
 
-		rdf_state.add_triple(
+		rdf_state->add_triple(
 			raptor_term_copy(fragment_selector_term),
-			raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::RDF, "value").uri),
-			raptor_new_term_from_literal(rdf_state.world, (const unsigned char*)pdf_fragment.c_str(), NULL, NULL));
+			raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::RDF, "value").uri),
+			raptor_new_term_from_literal(rdf_state->world, (const unsigned char*)pdf_fragment.c_str(), NULL, NULL));
 
 		if (body) {
-			rdf_state.add_triple(
+			rdf_state->add_triple(
 				raptor_term_copy(annotation_term),
-				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::OA, "hasBody").uri),
+				raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::OA, "hasBody").uri),
 				annotation_body_term);
 		}
 
@@ -202,24 +201,24 @@ public:
 	}
 
 	raptor_term* add_selector(const char* selector_type) {
-		raptor_term* selector_term = raptor_new_term_from_blank(rdf_state.world, NULL);
+		raptor_term* selector_term = raptor_new_term_from_blank(rdf_state->world, NULL);
 
-		rdf_state.add_triple(
+		rdf_state->add_triple(
 			raptor_term_copy(annotation_target_term),
-			raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::OA, "hasSelector").uri),
+			raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::OA, "hasSelector").uri),
 			selector_term);
 
-		rdf_state.add_triple(
+		rdf_state->add_triple(
 			raptor_term_copy(selector_term),
-			raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::RDF, "type").uri),
-			raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::OA, selector_type).uri));
+			raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::RDF, "type").uri),
+			raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::OA, selector_type).uri));
 
 		return selector_term;
 	}
 };
 
 void process_page(UnicodeMap *u_map, PDFDoc* doc, raptor_term* pdf_term,
-		int page_number, int *annotation_ct, RDFState rdf_state) {
+		int page_number, int *annotation_ct, RDFState *rdf_state) {
 	Page *page;
 	Annots *annots;
 	Annot *annot;
@@ -232,31 +231,31 @@ void process_page(UnicodeMap *u_map, PDFDoc* doc, raptor_term* pdf_term,
 
 		if (annot->getType() == Annot::typeText) {
 			OACAnnotation oac_annotation(pdf_term, page_number, "commenting", true, *annotation_ct, rdf_state);
-			rdf_state.add_triple(
+			rdf_state->add_triple(
 				raptor_term_copy(oac_annotation.annotation_body_term),
-				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::RDF, "Type").uri),
-				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::DC_TYPES, "Text").uri));
+				raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::RDF, "Type").uri),
+				raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::DC_TYPES, "Text").uri));
 
-			rdf_state.add_triple(
+			rdf_state->add_triple(
 				raptor_term_copy(oac_annotation.annotation_body_term),
-				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::RDF, "Type").uri),
-				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::CNT, "ContentAsText").uri));
+				raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::RDF, "Type").uri),
+				raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::CNT, "ContentAsText").uri));
 
-			rdf_state.add_triple(
+			rdf_state->add_triple(
 				raptor_term_copy(oac_annotation.annotation_body_term),
-				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::DC, "format").uri),
-				raptor_new_term_from_literal(rdf_state.world, (const unsigned char*)"text/plain", NULL, NULL));
+				raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::DC, "format").uri),
+				raptor_new_term_from_literal(rdf_state->world, (const unsigned char*)"text/plain", NULL, NULL));
 
-			rdf_state.add_triple(
+			rdf_state->add_triple(
 				raptor_term_copy(oac_annotation.annotation_body_term),
-				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::CNT, "chars").uri),
+				raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::CNT, "chars").uri),
 				raptor_new_term_from_literal(
-						rdf_state.world,
+						rdf_state->world,
 						(const unsigned char*)annot->getContents()->getCString(),
 						NULL,
 						(const unsigned char*)"EN"));
 
-			annotation_ct += 1;
+			*annotation_ct += 1;
 		}
 
 
@@ -265,21 +264,22 @@ void process_page(UnicodeMap *u_map, PDFDoc* doc, raptor_term* pdf_term,
 			GooString *subject = stamp->getSubject();
 
 			OACAnnotation oac_annotation(pdf_term, page_number, "bookmarking", true, *annotation_ct, rdf_state);
-			rdf_state.add_triple(
+			rdf_state->add_triple(
 				raptor_term_copy(oac_annotation.annotation_body_term),
-				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::RDF, "Type").uri),
-				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::DC_TYPES, "Image").uri));
+				raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::RDF, "Type").uri),
+				raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::DC_TYPES, "Image").uri));
 
-			rdf_state.add_triple(
+
+			rdf_state->add_triple(
 				raptor_term_copy(oac_annotation.annotation_body_term),
-				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::RDFS, "label").uri),
+				raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::RDFS, "label").uri),
 				raptor_new_term_from_literal(
-						rdf_state.world,
+						rdf_state->world,
 						(const unsigned char*)subject->getCString(),
 						NULL,
 						(const unsigned char*)"EN"));
 
-			annotation_ct += 1;
+			*annotation_ct += 1;
 		}
 
 
@@ -312,11 +312,11 @@ void process_page(UnicodeMap *u_map, PDFDoc* doc, raptor_term* pdf_term,
 			OACAnnotation oac_annotation(pdf_term, page_number, "highlighting", false, *annotation_ct, rdf_state);
 
 			raptor_term* quote_selector_term = oac_annotation.add_selector("TextQuoteSelector");
-			rdf_state.add_triple(
+			rdf_state->add_triple(
 				raptor_term_copy(quote_selector_term),
-				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::OA, "exact").uri),
+				raptor_new_term_from_uri(rdf_state->world, rdf_state->make_uri(NS::OA, "exact").uri),
 				raptor_new_term_from_literal(
-					rdf_state.world,
+					rdf_state->world,
 					(const unsigned char*)markup_text.c_str(),
 					NULL,
 					(const unsigned char*)"en"));
@@ -330,7 +330,7 @@ void process_page(UnicodeMap *u_map, PDFDoc* doc, raptor_term* pdf_term,
 			pdf_fragment += std::to_string(rect->y2);
 			*/
 
-			annotation_ct += 1;
+			*annotation_ct += 1;
 			annotObj.free();
 			obj1.free();
 		}
@@ -396,7 +396,7 @@ namespace binding {
 				raptor_new_term_from_uri(rdf_state.world, rdf_state.make_uri(NS::BIBO, "Document").uri));
 
 			for (int i = 1; i < doc->getNumPages(); ++i) {
-				// process_page(uMap, doc, pdf_term, i, &annotation_ct, rdf_state);
+				process_page(uMap, doc, pdf_term, i, &annotation_ct, &rdf_state);
 			}
 
 			rdf_state.end();
