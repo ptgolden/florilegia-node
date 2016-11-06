@@ -4,11 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "tape test",
     "install": "node-gyp rebuild"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "gypfile": true
+  "license": "GPL-3.0",
+  "gypfile": true,
+  "devDependencies": {
+    "tape": "^4.6.2"
+  }
 }
