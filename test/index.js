@@ -5,12 +5,8 @@ const fs = require('fs')
     , test = require('blue-tape')
     , { getAnnotations } = require('../build/Release/pdf2oac')
 
-
 function getPdfCreator(filename) {
   return filename.replace(/.*\//, '').replace('.pdf', '');
-}
-
-function testFiles(t, files, expected, msg) {
 }
 
 const cases = [
@@ -36,8 +32,6 @@ const cases = [
 ]
 
 test('Extracting annotations', t => {
-  const tests = []
-
   cases.forEach(({ dir, expected, msg }) => {
     const pdfs = fs.readdirSync(path.join(__dirname, dir))
 
