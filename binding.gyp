@@ -6,10 +6,10 @@
 				"src/pdf2oac.cc"
 			],
 			"libraries": [
-				"<!@(pkg-config --libs poppler,redland,raptor2)"
+				"<!@(pkg-config --libs poppler)"
 			],
 			"cflags": [
-				"<!@(pkg-config --cflags poppler,redland,raptor2)"
+				"<!@(pkg-config --cflags poppler)"
 			]
 		}
   ]
