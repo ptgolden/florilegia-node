@@ -201,7 +201,7 @@ namespace binding {
 			isolate->ThrowException(Exception::TypeError(
 				String::NewFromUtf8(isolate, "Could not open PDF at filename.")));
 		} else {
-			for (int i = 1; i < doc->getNumPages(); i++) {
+			for (int i = 1; i <= doc->getNumPages(); i++) {
 				std::list<annotation_t> page_annots = process_page(uMap, doc, i);
 				annots.splice(annots.end(), page_annots);
 			}
