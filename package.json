@@ -12,6 +12,7 @@
   "license": "GPL-3.0",
   "gypfile": true,
   "devDependencies": {
-    "tape": "^4.6.2"
-  }
+    "blue-tape": "^1.0.0"
+  },
+  "dependencies": {}
 }
