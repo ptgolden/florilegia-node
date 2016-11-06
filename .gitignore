@@ -1,2 +1,5 @@
 *.swp
 build
+node_modules
+.cproject
+.project
