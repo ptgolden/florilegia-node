@@ -24,8 +24,25 @@ struct annotation_t {
 	const char* motivation;
 	const char* body_type;
 	const char* body_label;
-	const char* body_text;
+	std::string body_text;
 };
+
+std::string gooStringToStdString(UnicodeMap *u_map, GooString *rawString) {
+	Unicode *u;
+	char buf[8];
+	std::string markup_text = "";
+
+	int unicodeLength = TextStringToUCS4(rawString, &u);
+	for (int i = 0; i < unicodeLength; i++) {
+		int n = u_map->mapUnicode(u[i], buf, sizeof(buf));
+		for (int j = 0; j < n; j++) {
+			markup_text += buf[j];
+		}
+	}
+	gfree(u);
+
+	return markup_text;
+}
 
 
 std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_number) {
@@ -39,9 +56,12 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 
 		switch (annot->getType()) {
 		case Annot::typeText: {
+			std::string body_text = gooStringToStdString(u_map, annot->getContents());
+
 			annotation_t a = {
 				page_number, "commenting", "text",
-				NULL, annot->getContents()->getCString()
+				NULL,
+				body_text
 			};
 
 			processed_annots.push_back(a);
@@ -70,26 +90,15 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 			doc->getXRef()->fetch(ref.num, ref.gen, &annotObj);
 			annotObj.dictLookup("MarkupText", &obj1);
 
-			Unicode *u;
-			char buf[8];
-			std::string markup_text = "";
 			GooString *rawString = obj1.getString();
-
-			int unicodeLength = TextStringToUCS4(rawString, &u);
-			for (int i = 0; i < unicodeLength; i++) {
-				int n = u_map->mapUnicode(u[i], buf, sizeof(buf));
-				for (int j = 0; j < n; j++) {
-					markup_text += buf[j];
-				}
-			}
-			gfree(u);
+			std::string markup_text = gooStringToStdString(u_map, rawString);
 
 			std::replace(markup_text.begin(), markup_text.end(), '\n', ' ');
 
 			a.page = page_number;
 			a.motivation = "Highlighting";
 			a.body_type = "Text";
-			a.body_text = markup_text.c_str();
+			a.body_text = markup_text;
 			a.body_label = NULL;
 			/*
 			PDFRectangle *rect = annot->getRect();
@@ -146,10 +155,10 @@ namespace binding {
 
 		);
 
-		if (annot.body_text) {
+		if (annot.body_text.c_str()) {
 			obj->Set(
 				String::NewFromUtf8(isolate, "body_text"),
-				String::NewFromUtf8(isolate, annot.body_text));
+				String::NewFromUtf8(isolate, annot.body_text.c_str()));
 		} else {
 			obj->Set(
 				String::NewFromUtf8(isolate, "body_text"),
