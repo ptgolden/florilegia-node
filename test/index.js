@@ -42,6 +42,20 @@ const cases = [
       }
     ],
     msg: 'should extract highlight annotations'
+  },
+
+  {
+    dir: './pdfs/3_highlight_multiline',
+    expected: [
+      {
+          page: 1,
+          motivation: 'highlighting',
+          body_type: 'text',
+          body_text: 'that spans',
+          body_label: null
+      }
+    ],
+    msg: 'should extract multiline highlight annotations'
   }
 ]
 

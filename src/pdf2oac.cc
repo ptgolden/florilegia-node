@@ -99,6 +99,9 @@ std::string getTextForMarkupAnnot(UnicodeMap *u_map, Annot *annot) {
 	auto rects = getRectanglesForAnnot(annot);;
 	for (auto rect : rects) {
 		GooString *str = textPage->getText(rect.xMin, mediaBox->y2 - rect.yMin, rect.xMax, mediaBox->y2 - rect.yMax);
+		if (text.length() > 0) {
+			text += " ";
+		}
 		text += gooStringToStdString(u_map, str);
 	}
 
