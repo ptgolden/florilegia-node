@@ -66,7 +66,7 @@ std::vector<rect_t> getRectanglesForAnnot(Annot *annot) {
 	AnnotQuadrilaterals *quads = new AnnotQuadrilaterals(obj1.getArray(), rect);
 
 	for (int i = 0; i < quads->getQuadrilateralsLength(); i++) {
-		rects.push_back({ quads->getX1(i), quads->getY3(i), quads->getX2(i), quads->getY1(i) });
+		rects.push_back({ quads->getX1(i), quads->getY1(i), quads->getX2(i), quads->getY3(i) });
 	}
 
 	delete quads;
@@ -98,7 +98,7 @@ std::string getTextForMarkupAnnot(UnicodeMap *u_map, Annot *annot) {
 
 	auto rects = getRectanglesForAnnot(annot);;
 	for (auto rect : rects) {
-		GooString *str = textPage->getText(rect.xMin, mediaBox->y2 - rect.yMax, rect.xMax, mediaBox->y2 - rect.yMin);
+		GooString *str = textPage->getText(rect.xMin, mediaBox->y2 - rect.yMin, rect.xMax, mediaBox->y2 - rect.yMax);
 		text += gooStringToStdString(u_map, str);
 	}
 
