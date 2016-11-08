@@ -28,6 +28,20 @@ const cases = [
       }
     ],
     msg: 'should extract comment annotations'
+  },
+
+  {
+    dir: './pdfs/2_highlight',
+    expected: [
+      {
+          page: 1,
+          motivation: 'highlighting',
+          body_type: 'text',
+          body_text: 'document',
+          body_label: null
+      }
+    ],
+    msg: 'should extract highlight annotations'
   }
 ]
 
