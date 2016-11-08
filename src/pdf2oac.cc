@@ -15,6 +15,7 @@
 #include <PDFDoc.h>
 #include <PDFDocEncoding.h>
 #include <PDFDocFactory.h>
+#include <TextOutputDev.h>
 #include <UnicodeMap.h>
 #include <UTF.h>
 #include <XRef.h>
@@ -25,6 +26,13 @@ struct annotation_t {
 	const char* body_type;
 	const char* body_label;
 	std::string body_text;
+};
+
+struct rect_t {
+	double xMin;
+	double yMin;
+	double xMax;
+	double yMax;
 };
 
 std::string gooStringToStdString(UnicodeMap *u_map, GooString *rawString) {
@@ -42,6 +50,62 @@ std::string gooStringToStdString(UnicodeMap *u_map, GooString *rawString) {
 	gfree(u);
 
 	return markup_text;
+}
+
+static double resolution = 72.0;
+
+std::vector<rect_t> getRectanglesForAnnot(Annot *annot) {
+	std::vector<rect_t> rects;
+	const Ref ref = annot->getRef();
+	Object annotObj;
+	Object obj1;
+	PDFRectangle *rect = new PDFRectangle();
+
+	annot->getDoc()->getXRef()->fetch(ref.num, ref.gen, &annotObj);
+	annotObj.dictLookup("QuadPoints", &obj1);
+	AnnotQuadrilaterals *quads = new AnnotQuadrilaterals(obj1.getArray(), rect);
+
+	for (int i = 0; i < quads->getQuadrilateralsLength(); i++) {
+		rects.push_back({ quads->getX1(i), quads->getY3(i), quads->getX2(i), quads->getY1(i) });
+	}
+
+	delete quads;
+	annotObj.free();
+	obj1.free();
+
+	return rects;
+}
+
+std::string getTextForMarkupAnnot(UnicodeMap *u_map, Annot *annot) {
+	TextOutputDev *textOut;
+	TextPage *textPage;
+	PDFDoc *doc;
+	PDFRectangle *mediaBox;
+	Page *page;
+	int pageNum;
+	std::string text = "";
+
+	doc = annot->getDoc();
+	pageNum = annot->getPageNum();
+	page = doc->getPage(pageNum);
+
+	mediaBox = page->getMediaBox();
+
+	// Set up the text to be rendered
+	textOut = new TextOutputDev(NULL, gFalse, 0, gFalse, gFalse);
+	doc->displayPage(textOut, pageNum, resolution, resolution, 0, gTrue, gFalse, gFalse);
+	textPage = textOut->takeText();
+
+	auto rects = getRectanglesForAnnot(annot);;
+	for (auto rect : rects) {
+		GooString *str = textPage->getText(rect.xMin, mediaBox->y2 - rect.yMax, rect.xMax, mediaBox->y2 - rect.yMin);
+		text += gooStringToStdString(u_map, str);
+	}
+
+
+	textPage->decRefCnt();
+	delete textOut;
+	return text;
 }
 
 
@@ -82,35 +146,12 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 
 		case Annot::typeUnderline:
 		case Annot::typeHighlight: {
-			annotation_t a;
-			const Ref ref = annot->getRef();
-			Object annotObj;
-			Object obj1;
+			std::string c = getTextForMarkupAnnot(u_map, annot);
 
-			doc->getXRef()->fetch(ref.num, ref.gen, &annotObj);
-			annotObj.dictLookup("MarkupText", &obj1);
-
-			GooString *rawString = obj1.getString();
-			std::string markup_text = gooStringToStdString(u_map, rawString);
-
-			std::replace(markup_text.begin(), markup_text.end(), '\n', ' ');
-
-			a.page = page_number;
-			a.motivation = "Highlighting";
-			a.body_type = "Text";
-			a.body_text = markup_text;
-			a.body_label = NULL;
-			/*
-			PDFRectangle *rect = annot->getRect();
-			pdf_fragment += "&viewrect=";
-			pdf_fragment += std::to_string(rect->x1) + ",";
-			pdf_fragment += std::to_string(rect->y1) + ",";
-			pdf_fragment += std::to_string(rect->x2) + ",";
-			pdf_fragment += std::to_string(rect->y2);
-			*/
-
-			annotObj.free();
-			obj1.free();
+			annotation_t a = {
+					page_number, "highlighting", "text",
+					NULL, getTextForMarkupAnnot(u_map, annot)
+			};
 			processed_annots.push_back(a);
 			break;
 		}
