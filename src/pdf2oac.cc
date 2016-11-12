@@ -1,11 +1,9 @@
 #include <stdio.h>
 #include <string>
-#include <unordered_map>
 #include <algorithm>
 #include <list>
 
-#include <v8.h>
-#include <node.h>
+#include <nan.h>
 
 #include <goo/GooString.h>
 #include <Annot.h>
@@ -54,8 +52,8 @@ std::string gooStringToStdString(UnicodeMap *u_map, GooString *rawString) {
 
 static double resolution = 72.0;
 
-std::vector<rect_t> getRectanglesForAnnot(Annot *annot) {
-	std::vector<rect_t> rects;
+std::list<rect_t> getRectanglesForAnnot(Annot *annot) {
+	std::list<rect_t> rects;
 	const Ref ref = annot->getRef();
 	Object annotObj;
 	Object obj1;
@@ -93,6 +91,7 @@ std::string getTextForMarkupAnnot(UnicodeMap *u_map, Annot *annot) {
 
 	// Set up the text to be rendered
 	textOut = new TextOutputDev(NULL, gFalse, 0, gFalse, gFalse);
+
 	doc->displayPage(textOut, pageNum, resolution, resolution, 0, gTrue, gFalse, gFalse);
 	textPage = textOut->takeText();
 
@@ -169,116 +168,104 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 }
 
 namespace binding {
-	using v8::FunctionCallbackInfo;
-	using v8::Isolate;
-	using v8::Local;
-	using v8::Array;
-	using v8::Object;
-	using v8::Null;
-	using v8::Number;
-	using v8::String;
-	using v8::Value;
-	using v8::Exception;
+	using namespace Nan;
+	using namespace v8;
 
-	Local<Object> annotation_as_object(Isolate* isolate, annotation_t annot) {
-		Local<Object> obj = Object::New(isolate);
+	v8::Local<v8::Object> annotation_as_object(annotation_t *annot) {
+		Nan::HandleScope scope;
+		v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
 		obj->Set(
-			String::NewFromUtf8(isolate, "page"),
-			Number::New(isolate, annot.page)
-		);
+			Nan::New("page").ToLocalChecked(),
+			Nan::New(annot->page));
 
 		obj->Set(
-			String::NewFromUtf8(isolate, "motivation"),
-			String::NewFromUtf8(isolate, annot.motivation)
-		);
+			Nan::New("motivation").ToLocalChecked(),
+			Nan::New(annot->motivation).ToLocalChecked());
 
 		obj->Set(
-			String::NewFromUtf8(isolate, "body_type"),
-			String::NewFromUtf8(isolate, annot.body_type)
+			Nan::New("body_type").ToLocalChecked(),
+			Nan::New(annot->body_type).ToLocalChecked());
 
-		);
-
-		if (annot.body_text.c_str()) {
+		if (annot->body_text.c_str()) {
 			obj->Set(
-				String::NewFromUtf8(isolate, "body_text"),
-				String::NewFromUtf8(isolate, annot.body_text.c_str()));
+				Nan::New("body_text").ToLocalChecked(),
+				Nan::New(annot->body_text.c_str()).ToLocalChecked());
 		} else {
 			obj->Set(
-				String::NewFromUtf8(isolate, "body_text"),
-				Null(isolate));
+				Nan::New("body_text").ToLocalChecked(),
+				Nan::Null());
 		}
 
-		if (annot.body_label) {
+		if (annot->body_label) {
 			obj->Set(
-				String::NewFromUtf8(isolate, "body_label"),
-				String::NewFromUtf8(isolate, annot.body_label));
+				Nan::New("body_label").ToLocalChecked(),
+				Nan::New(annot->body_label).ToLocalChecked());
 		} else {
 			obj->Set(
-				String::NewFromUtf8(isolate, "body_label"),
-				Null(isolate));
+				Nan::New("body_label").ToLocalChecked(),
+				Nan::Null());
 		}
 
 		return obj;
 	}
 
 
-	void GetAnnotations(const FunctionCallbackInfo<Value>& args) {
+	NAN_METHOD(GetAnnotations) {
 		PDFDoc *doc;
 		UnicodeMap *uMap;
 		GooString *filename;
-		Isolate* isolate = args.GetIsolate();
 		std::list<annotation_t> annots;
+
+		if (info.Length() != 1) {
+			Nan::ThrowTypeError("getAnnotations takes exactly one argument");
+			return;
+		}
+
+		if (!info[0]->IsString()) {
+			Nan::ThrowTypeError("Argument should be a path to a PDF file");
+			return;
+		}
 
 		globalParams = new GlobalParams();
 		uMap = globalParams->getTextEncoding();
 
-		if (args.Length() != 1) {
-			isolate->ThrowException(Exception::TypeError(
-				String::NewFromUtf8(isolate, "Function takes exactly one argument")));
-			return;
-		}
+		std::string fnameString(*v8::String::Utf8Value(info[0]));
 
-		if (!args[0]->IsString()) {
-			isolate->ThrowException(Exception::TypeError(
-				String::NewFromUtf8(isolate, "Function argument should be string of a filename")));
-			return;
-		}
-
-		String::Utf8Value param(args[0]->ToString());
-
-		filename = new GooString(std::string(*param).c_str());
+		filename = new GooString(fnameString.c_str());
 		doc = PDFDocFactory().createPDFDoc(*filename, NULL, NULL);
 
 		if (!doc->isOk()) {
-			isolate->ThrowException(Exception::TypeError(
-				String::NewFromUtf8(isolate, "Could not open PDF at filename.")));
+			Nan::ThrowError("Could not open PDF at given filename.");
 		} else {
 			for (int i = 1; i <= doc->getNumPages(); i++) {
 				std::list<annotation_t> page_annots = process_page(uMap, doc, i);
+
 				annots.splice(annots.end(), page_annots);
 			}
 
 			int i = 0;
-			Local<Array> annots_list = Array::New(isolate);
+			v8::Local<v8::Array> annots_list = New<v8::Array>(annots.size());
 
 			for (annotation_t annot : annots) {
-				Local<Object> annot_obj = annotation_as_object(isolate, annot);
+				v8::Local<v8::Object> annot_obj = annotation_as_object(&annot);
 				annots_list->Set(i, annot_obj);
 				i += 1;
 			}
-			args.GetReturnValue().Set(annots_list);
+
+			info.GetReturnValue().Set(annots_list);
 		}
 
-		// Clean up
 		uMap->decRefCnt();
 		delete globalParams;
 		delete filename;
 		delete doc;
 	}
 
-	void init(Local<Object> exports) {
-			  NODE_SET_METHOD(exports, "getAnnotations", GetAnnotations);
+	void init(v8::Local<v8::Object> exports) {
+		exports->Set(
+			Nan::New("getAnnotations").ToLocalChecked(),
+			Nan::New<v8::FunctionTemplate>(GetAnnotations)->GetFunction());
 	}
 
 	NODE_MODULE(addon, init)

@@ -14,5 +14,7 @@
   "devDependencies": {
     "blue-tape": "^1.0.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "nan": "^2.4.0"
+  }
 }
