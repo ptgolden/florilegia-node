@@ -139,7 +139,7 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 
 			annotation_t a = {
 				page_number, "bookmarking", "image",
-				stamp->getSubject()->getCString(), NULL
+				stamp->getSubject()->getCString(), ""
 			};
 
 			processed_annots.push_back(a);
@@ -187,7 +187,7 @@ namespace binding {
 			Nan::New("body_type").ToLocalChecked(),
 			Nan::New(annot->body_type).ToLocalChecked());
 
-		if (annot->body_text.c_str()) {
+		if (annot->body_text.length() > 0) {
 			obj->Set(
 				Nan::New("body_text").ToLocalChecked(),
 				Nan::New(annot->body_text.c_str()).ToLocalChecked());
