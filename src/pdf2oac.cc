@@ -21,9 +21,9 @@
 struct annotation_t {
 	int page;
 	const char* motivation;
-	const char* body_type;
-	const char* body_label;
+	const char* stamp_label;
 	std::string body_text;
+	std::string highlighted_text;
 };
 
 struct rect_t {
@@ -125,9 +125,9 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 			std::string body_text = gooStringToStdString(u_map, annot->getContents());
 
 			annotation_t a = {
-				page_number, "commenting", "text",
+				page_number, "commenting",
 				NULL,
-				body_text
+				body_text, ""
 			};
 
 			processed_annots.push_back(a);
@@ -138,8 +138,8 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 			AnnotStamp *stamp = static_cast<AnnotStamp *>(annot);
 
 			annotation_t a = {
-				page_number, "bookmarking", "image",
-				stamp->getSubject()->getCString(), ""
+				page_number, "bookmarking",
+				stamp->getSubject()->getCString(), "", ""
 			};
 
 			processed_annots.push_back(a);
@@ -151,8 +151,8 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 			std::string c = getTextForMarkupAnnot(u_map, annot);
 
 			annotation_t a = {
-					page_number, "highlighting", "text",
-					NULL, getTextForMarkupAnnot(u_map, annot)
+					page_number, "highlighting",
+					NULL, "", getTextForMarkupAnnot(u_map, annot)
 			};
 			processed_annots.push_back(a);
 			break;
@@ -183,28 +183,22 @@ namespace binding {
 			Nan::New("motivation").ToLocalChecked(),
 			Nan::New(annot->motivation).ToLocalChecked());
 
-		obj->Set(
-			Nan::New("body_type").ToLocalChecked(),
-			Nan::New(annot->body_type).ToLocalChecked());
-
 		if (annot->body_text.length() > 0) {
 			obj->Set(
 				Nan::New("body_text").ToLocalChecked(),
 				Nan::New(annot->body_text.c_str()).ToLocalChecked());
-		} else {
-			obj->Set(
-				Nan::New("body_text").ToLocalChecked(),
-				Nan::Null());
 		}
 
-		if (annot->body_label) {
+		if (annot->highlighted_text.length() > 0) {
 			obj->Set(
-				Nan::New("body_label").ToLocalChecked(),
-				Nan::New(annot->body_label).ToLocalChecked());
-		} else {
+				Nan::New("highlighted_text").ToLocalChecked(),
+				Nan::New(annot->highlighted_text.c_str()).ToLocalChecked());
+		}
+
+		if (annot->stamp_label) {
 			obj->Set(
-				Nan::New("body_label").ToLocalChecked(),
-				Nan::Null());
+				Nan::New("stamp_label").ToLocalChecked(),
+				Nan::New(annot->stamp_label).ToLocalChecked());
 		}
 
 		return obj;

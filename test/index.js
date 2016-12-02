@@ -3,7 +3,7 @@
 const fs = require('fs')
     , path = require('path')
     , test = require('blue-tape')
-    , { getAnnotations } = require('../build/Release/pdf2oac')
+    , { getAnnotations } = require('../')
 
 function getPdfCreator(filename) {
   return filename.replace(/.*\//, '').replace('.pdf', '');
@@ -22,9 +22,7 @@ const cases = [
       {
           page: 1,
           motivation: 'commenting',
-          body_type: 'text',
           body_text: 'This is a comment',
-          body_label: null
       }
     ],
     msg: 'should extract comment annotations'
@@ -36,9 +34,7 @@ const cases = [
       {
           page: 1,
           motivation: 'highlighting',
-          body_type: 'text',
-          body_text: 'document',
-          body_label: null
+          highlighted_text: 'document',
       }
     ],
     msg: 'should extract highlight annotations'
@@ -50,9 +46,7 @@ const cases = [
       {
           page: 1,
           motivation: 'highlighting',
-          body_type: 'text',
-          body_text: 'that spans',
-          body_label: null
+          highlighted_text: 'that spans',
       }
     ],
     msg: 'should extract multiline highlight annotations'
