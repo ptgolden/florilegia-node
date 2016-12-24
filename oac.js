@@ -25,111 +25,78 @@ function makeTag(email, filename) {
   ].join(':')
 }
 
-function annotsToOAC(user, filename, cb) {
-  const writer = new Writer({ prefixes: PREFIXES, format: 'turtle' })
-      , annotations = getAnnotations(filename)
-      , triples = []
+function format(val) {
+  val = val.toString();
 
-  const addTriple = (subject, predicate, object) => {
-    triples.push({ subject, predicate, object })
+  if (Util.isLiteral(val)) {
+    return val;
   }
+
+  if (Util.isPrefixedName) {
+    return Util.expandPrefixedName(val, PREFIXES)
+  }
+}
+
+function tripleFactory(subject) {
+  const func = predicate => object => ({
+    subject: format(subject),
+    predicate: format(predicate),
+    object: format(object),
+  })
+
+  func.toString = () => subject;
+
+  return func;
+}
+
+function pdf2oac(user='http://example.com', filename, cb) {
+  const writer = new Writer({ prefixes: PREFIXES, format: 'ntriples' })
+      , annotations = getAnnotations(filename)
+
+  let triples = []
 
   annotations.forEach((annotation, i) => {
     const { page, motivation, body_text, highlighted_text } = annotation
-        , annotID = makeTag(user, filename, `annot-${i + 1}`)
-        , makeURI = p => `${annotID}/${p}`
-        , targetID = makeURI('target')
-        , pdfSelectorID = makeURI('page-selector')
+        , annotURI = tripleFactory(makeTag(user, filename, `annot-${i + 1}`))
+        , makeURI = p => `${annotURI}/${p}`
+        , targetURI = tripleFactory(makeURI('target'))
+        , pdfSelectorURI = tripleFactory(makeURI('page-selector'))
 
-    addTriple(
-      annotID,
-      'rdf:type',
-      'oa:Annotation');
+    triples = triples.concat([
+      annotURI('rdf:type')('oa:Annotation'),
+      annotURI('oa:hasMotivation')('oa:' + motivation),
+      annotURI('oa:hasTarget')(targetURI),
+      annotURI('oa:hasSource')('file://' + filename),
+    ])
 
-    addTriple(
-      annotID,
-      'oa:hasMotivation',
-      'oa:' + motivation);
-
-    addTriple(
-      annotID,
-      'oa:hasTarget',
-      targetID);
-
-    addTriple(
-      targetID,
-      'oa:hasSource',
-      'file://' + filename);
-
-    // PDF Selector
-    addTriple(
-      targetID,
-      'oa:hasSelector',
-      pdfSelectorID);
-
-    addTriple(
-      pdfSelectorID,
-      'rdf:type',
-      'oa:FragmentSelector');
-
-    addTriple(
-      pdfSelectorID,
-      'rdf:value',
-      Util.createLiteral(`#page=${page}`));
-
-    addTriple(
-      pdfSelectorID,
-      'oa:conformsTo',
-      'http://tools.ietf.org/rfc/rfc3778');
-
+    triples = triples.concat([
+      targetURI('oa:hasSelector')(pdfSelectorURI),
+      pdfSelectorURI('rdf:type')('oa:FragmentSelector'),
+      pdfSelectorURI('rdf:value')(Util.createLiteral(`#page=${page}`)),
+      pdfSelectorURI('oa:conformsTo')('http://tools.ietf.org/rfc/rfc3778'),
+    ])
     // Text selector
     if (highlighted_text) {
-      const textSelectorID = makeURI('text-selector')
+      const textSelectorURI = tripleFactory(makeURI('text-selector'))
 
-      addTriple(
-        targetID,
-        'oa:hasSelector',
-        textSelectorID);
-
-      addTriple(
-        textSelectorID,
-        'rdf:type',
-        'oa:TextQuoteSelector');
-
-      addTriple(
-        textSelectorID,
-        'oa:exact',
-        Util.createLiteral(highlighted_text));
+      triples = triples.concat([
+        targetURI('oa:hasSelector')(textSelectorURI),
+        textSelectorURI('rdf:type')('oa:TextQuoteSelector'),
+        textSelectorURI('oa:exact')(Util.createLiteral(highlighted_text)),
+      ])
     }
 
     // Text body (i.e. comment)
     if (body_text) {
-      const commentBodyID = makeURI('comment-body')
+      const commentBodyURI = tripleFactory(makeURI('comment-body'))
 
-      addTriple(
-        annotID,
-        'oa:hasBody',
-        commentBodyID);
-
-      addTriple(
-        commentBodyID,
-        'dc:format',
-        Util.createLiteral('text/plain'));
-
-      addTriple(
-        commentBodyID,
-        'rdf:type',
-        'dctypes:Text');
-
-      addTriple(
-        commentBodyID,
-        'rdf:type',
-        'cnt:ContentAsText');
-
-      addTriple(
-        commentBodyID,
-        'cnt:chars',
-        Util.createLiteral(body_text))
+      triples = triples.concat([
+        annotURI('oa:hasBody')(commentBodyURI),
+        commentBodyURI('dc:format')(Util.createLiteral('text/plain')),
+        commentBodyURI('rdf:type')('dctypes:Text'),
+        commentBodyURI('rdf:type')('cnt:ContentAsText'),
+        commentBodyURI('cnt:chars')(Util.createLiteral(body_text)),
+      ])
     }
 
     triples.forEach(triple => writer.addTriple(triple));
@@ -138,4 +105,4 @@ function annotsToOAC(user, filename, cb) {
   writer.end(cb);
 }
 
-module.exports = { annotsToOAC }
+module.exports = { pdf2oac }
