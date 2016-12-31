@@ -3,15 +3,15 @@
 		{
 			"target_name": "pdf2oac",
 			"sources": [
-				"src/pdf2oac.cc"
+				"src/pdf2oac.cc",
+				"src/poppler/utils/ImageOutputDev.cc"
 			],
 			"libraries": [
-				"<!@(pkg-config --libs poppler)"
+				"<!@(pkg-config --libs poppler)",
 			],
 			"include_dirs": [
 				"<!(node -e \"require('nan')\")",
-				"src",
-
+				"src/poppler"
 			],
 			"cflags": [
 				"-Wall",

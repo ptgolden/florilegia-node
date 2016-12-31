@@ -9,6 +9,7 @@
 #include <Annot.h>
 #include <CharTypes.h>
 #include <GlobalParams.h>
+#include <utils/ImageOutputDev.h>
 #include <Page.h>
 #include <PDFDoc.h>
 #include <PDFDocEncoding.h>
@@ -74,6 +75,38 @@ std::list<rect_t> getRectanglesForAnnot(Annot *annot) {
 	return rects;
 }
 
+void writeStampToFile(Annot *annot, const char* objectID) {
+	Gfx *gfx;
+	ImageOutputDev *imageOut;
+	PDFDoc *doc;
+	Page *page;
+	int pageNum;
+
+	std::string imgRoot = "TEST/";
+	imgRoot.append(objectID);
+
+	char *pf = new char[imgRoot.length() + 1];
+	std::strcpy(pf, imgRoot.c_str());
+
+	imageOut = new ImageOutputDev(pf, NULL, gFalse);
+	imageOut->enablePNG(gTrue);
+
+	doc = annot->getDoc();
+	pageNum = annot->getPageNum();
+	page = doc->getPage(pageNum);
+
+	gfx = page->createGfx(imageOut, resolution, resolution, 0,
+			gTrue, gFalse,
+			-1, -1, -1, -1,
+			gFalse, NULL, NULL);
+
+	annot->draw(gfx, gFalse);
+
+	delete pf;
+	delete imageOut;
+}
+
+
 std::string getTextForMarkupAnnot(UnicodeMap *u_map, Annot *annot) {
 	TextOutputDev *textOut;
 	TextPage *textPage;
@@ -137,10 +170,13 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 		case Annot::typeStamp: {
 			AnnotStamp *stamp = static_cast<AnnotStamp *>(annot);
 
+
 			annotation_t a = {
 				page_number, "bookmarking",
 				stamp->getSubject()->getCString(), "", ""
 			};
+
+			writeStampToFile(annot, std::to_string(stamp->getId()).c_str());
 
 			processed_annots.push_back(a);
 			break;
