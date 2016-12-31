@@ -9,7 +9,9 @@
 				"<!@(pkg-config --libs poppler)"
 			],
 			"include_dirs": [
-				"<!(node -e \"require('nan')\")"
+				"<!(node -e \"require('nan')\")",
+				"src",
+
 			],
 			"cflags": [
 				"-Wall",
