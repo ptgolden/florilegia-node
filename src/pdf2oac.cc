@@ -21,6 +21,7 @@
 
 struct annotation_t {
 	int page;
+	int object_id;
 	const char* motivation;
 	const char* stamp_label;
 	std::string body_text;
@@ -158,7 +159,7 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 			std::string body_text = gooStringToStdString(u_map, annot->getContents());
 
 			annotation_t a = {
-				page_number, "commenting",
+				page_number, annot->getId(), "commenting",
 				NULL,
 				body_text, ""
 			};
@@ -172,7 +173,7 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 
 
 			annotation_t a = {
-				page_number, "bookmarking",
+				page_number, annot->getId(), "bookmarking",
 				stamp->getSubject()->getCString(), "", ""
 			};
 
@@ -187,7 +188,7 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 			std::string c = getTextForMarkupAnnot(u_map, annot);
 
 			annotation_t a = {
-					page_number, "highlighting",
+					page_number, annot->getId(), "highlighting",
 					NULL, "", getTextForMarkupAnnot(u_map, annot)
 			};
 			processed_annots.push_back(a);
@@ -214,6 +215,10 @@ namespace binding {
 		obj->Set(
 			Nan::New("page").ToLocalChecked(),
 			Nan::New(annot->page));
+
+		obj->Set(
+			Nan::New("object_id").ToLocalChecked(),
+			Nan::New(annot->object_id));
 
 		obj->Set(
 			Nan::New("motivation").ToLocalChecked(),

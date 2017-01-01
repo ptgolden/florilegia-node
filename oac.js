@@ -1,6 +1,8 @@
 "use strict";
 
-const path = require('path')
+const fs = require('fs')
+    , path = require('path')
+    , glob = require('glob')
     , { Writer, Util } = require('n3')
     , { getAnnotations } = require('./')
 
@@ -97,6 +99,42 @@ function pdf2oac(user='http://example.com', filename, cb) {
         commentBodyURI('rdf:type')('cnt:ContentAsText'),
         commentBodyURI('cnt:chars')(Util.createLiteral(body_text)),
       ])
+
+      commentBodyURI({
+        'dc:format': Util.createLiteral('text/plain'),
+        'rdf:type': [
+          'dctypes:Text',
+          'cnt:ContentAsText'
+        ],
+        'cnt:chars': Util.createLiteral(body_text)
+      })
+
+      triples = triples.concat([
+        annotURI('oa:hasBody')(commentBodyURI),
+        commentBodyURI('dc:format')(Util.createLiteral('text/plain')),
+        commentBodyURI('rdf:type')('dctypes:Text'),
+        commentBodyURI('rdf:type')('cnt:ContentAsText'),
+        commentBodyURI('cnt:chars')(Util.createLiteral(body_text)),
+      ])
+    }
+
+    if (motivation === 'bookmarking') {
+      const file = glob.sync('TEST/' + annotation.object_id + '*').slice(-1)[0];
+
+      if (file) {
+        const imageBodyURI = tripleFactory(makeURI('stamp'))
+            , content = fs.readFileSync(file)
+            , buf = new Buffer(content);
+
+        triples = triples.concat([
+          annotURI('oa:hasBody')(imageBodyURI),
+          imageBodyURI('dc:format')(Util.createLiteral('image/png')),
+          imageBodyURI('rdf:type')('dctypes:Image'),
+          imageBodyURI('rdf:type')('cnt:ContentAsBase64'),
+          imageBodyURI('cnt:bytes')(Util.createLiteral(buf.toString('base64'))),
+        ])
+      }
+
     }
 
     triples.forEach(triple => writer.addTriple(triple));
