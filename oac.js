@@ -4,21 +4,22 @@ const fs = require('fs')
     , path = require('path')
     , glob = require('glob')
     , { Writer, Util } = require('n3')
+    , { createLiteral } = Util
     , { getAnnotations } = require('./')
 
 const prefixes = {
-  oa: "http://www.w3.org/ns/oa#",
-  dc: "http://purl.org/dc/elements/1.1/",
-  dctypes: "http://purl.org/dc/dcmitype/",
-  cnt: "http://www.w3.org/2011/content#",
-  bibo: "http://purl.org/ontology/bibo/",
-  rdf: "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-  rdfs: "http://www.w3.org/2000/01/rdf-schema#",
+  oa: require('lov-ns/oa'),
+  dce: require('lov-ns/dce'),
+  dctype: require('lov-ns/dctype'),
+  cnt: require('lov-ns/cnt'),
+  bibo: require('lov-ns/bibo'),
+  rdf: require('lov-ns/rdf'),
+  rdfs: require('lov-ns/rdfs'),
 }
 
-const $ = require('rdf-triple-builder')({ prefixes })
+const $ = require('rdf-builder')({ prefixes })
 
-function makeTag(email, filename) {
+function makeURITag(email, filename) {
   const d = new Date()
 
   return [
@@ -37,10 +38,12 @@ function pdf2oac(user='http://example.com', filename, cb) {
 
   annotations.forEach((annotation, i) => {
     const { page, motivation, body_text, highlighted_text } = annotation
-        , $annot = $(makeTag(user, filename, `annot-${i + 1}`))
-        , makeURI = p => $(`${$annot}/${p}`)
-        , $target = makeURI('target')
-        , $pdfSelector = makeURI('page-selector')
+        , baseTag = makeURITag(user, filename, `annot-${i + 1}`)
+        , makeAnnotURI = p => $(`${baseTag}/${p ? p : ''}`)
+
+    const $annot = makeAnnotURI()
+        , $target = makeAnnotURI('target')
+        , $pdfSelector = makeAnnotURI('page-selector')
 
     triples = triples.concat(
       $annot({
@@ -54,36 +57,36 @@ function pdf2oac(user='http://example.com', filename, cb) {
 
       $pdfSelector({
         'rdf:type': 'oa:FragmentSelector',
-        'rdf:value': Util.createLiteral(`#page=${page}`),
+        'rdf:value': createLiteral(`#page=${page}`),
         'oa:conformsTo': 'http://tools.ietf.org/rfc/rfc3778',
       })
     )
 
     // Text selector
     if (highlighted_text) {
-      const $textSelector = makeURI('text-selector')
+      const $textSelector = makeAnnotURI('text-selector')
 
       triples = triples.concat(
         $target('oa:hasSelector')($textSelector),
 
         $textSelector({
           'rdf:type': 'oa:TextQuoteSelector',
-          'oa:exact': Util.createLiteral(highlighted_text),
+          'oa:exact': createLiteral(highlighted_text),
         })
       )
     }
 
     // Text body (i.e. comment)
     if (body_text) {
-      const $commentBody = makeURI('comment-body')
+      const $commentBody = makeAnnotURI('comment-body')
 
       triples = triples.concat(
         $annot('oa:hasBody')($commentBody),
 
         $commentBody({
-          'dc:format': Util.createLiteral('text/plain'),
-          'rdf:type': ['dctypes:Text', 'cnt:ContentAsText'],
-          'cnt:chars': Util.createLiteral(body_text),
+          'dce:format': createLiteral('text/plain'),
+          'rdf:type': ['dctype:Text', 'cnt:ContentAsText'],
+          'cnt:chars': createLiteral(body_text),
         })
       )
     }
@@ -92,7 +95,7 @@ function pdf2oac(user='http://example.com', filename, cb) {
       const file = glob.sync('TEST/' + annotation.object_id + '*').slice(-1)[0];
 
       if (file) {
-        const $imageBody = makeURI('stamp')
+        const $imageBody = makeAnnotURI('stamp')
             , content = fs.readFileSync(file)
             , buf = new Buffer(content);
 
@@ -100,9 +103,9 @@ function pdf2oac(user='http://example.com', filename, cb) {
           $annot('oa:hasBody')($imageBody),
 
           $imageBody({
-            'dc:format': Util.createLiteral('image/png'),
-            'rdf:type': ['dctypes:Image', 'cnt:ContentAsBase64'],
-            'cnt:bytes': Util.createLiteral(buf.toString('base64')),
+            'dce:format': createLiteral('image/png'),
+            'rdf:type': ['dctype:Image', 'cnt:ContentAsBase64'],
+            'cnt:bytes': createLiteral(buf.toString('base64')),
           })
         )
       }
