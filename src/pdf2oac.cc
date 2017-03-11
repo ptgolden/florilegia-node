@@ -209,7 +209,6 @@ namespace binding {
 	using namespace v8;
 
 	v8::Local<v8::Object> annotation_as_object(annotation_t *annot) {
-		Nan::HandleScope scope;
 		v8::Local<v8::Object> obj = Nan::New<v8::Object>();
 
 		obj->Set(
