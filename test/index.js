@@ -59,7 +59,10 @@ test('Extracting annotations', t => {
 
     pdfs.forEach(filename => {
       t.deepEqual(
-        getAnnotations(path.join(__dirname, dir, filename)),
+        getAnnotations(path.join(__dirname, dir, filename)).map(annot => {
+          delete annot.object_id;
+          return annot;
+        }),
         expected,
         `${msg} (${getPdfCreator(filename)}).`)
     })
