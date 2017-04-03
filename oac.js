@@ -19,6 +19,7 @@ const $ = require('rdf-builder')({ prefixes })
 
 module.exports = function annotationsToOAC(annotations, opts={}) {
   const {
+    imageDirectory,
     pdfURI,
     baseURI='http://example.org/#',
     outstream=process.stdout
@@ -91,8 +92,8 @@ module.exports = function annotationsToOAC(annotations, opts={}) {
       )
     }
 
-    if (motivation === 'bookmarking') {
-      const file = glob.sync('TEST/' + annotation.object_id + '*').slice(-1)[0];
+    if (motivation === 'bookmarking' && imageDirectory) {
+      const file = glob.sync(imageDirectory + '/' + annotation.object_id + '*').slice(-1)[0];
 
       if (file) {
         const content = fs.readFileSync(file)

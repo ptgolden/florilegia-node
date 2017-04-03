@@ -76,14 +76,14 @@ std::list<rect_t> getRectanglesForAnnot(Annot *annot) {
 	return rects;
 }
 
-void writeStampToFile(Annot *annot, const char* objectID) {
+void writeStampToFile(Annot *annot, const char* objectID, std::string imgDirectory) {
 	Gfx *gfx;
 	ImageOutputDev *imageOut;
 	PDFDoc *doc;
 	Page *page;
 	int pageNum;
 
-	std::string imgRoot = "TEST/";
+	std::string imgRoot = imgDirectory + "/";
 	imgRoot.append(objectID);
 
 	char *pf = new char[imgRoot.length() + 1];
@@ -145,7 +145,7 @@ std::string getTextForMarkupAnnot(UnicodeMap *u_map, Annot *annot) {
 }
 
 
-std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_number) {
+std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_number, std::string imgDirectory) {
 	Page *page = doc->getPage(page_number);
 	Annots *annots = page->getAnnots();
 	std::list<annotation_t> processed_annots;
@@ -177,7 +177,7 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 				stamp->getSubject()->getCString(), "", ""
 			};
 
-			writeStampToFile(annot, std::to_string(stamp->getId()).c_str());
+			writeStampToFile(annot, std::to_string(stamp->getId()).c_str(), imgDirectory);
 
 			processed_annots.push_back(a);
 			break;
@@ -251,13 +251,18 @@ namespace binding {
 		GooString *filename;
 		std::list<annotation_t> annots;
 
-		if (info.Length() != 1) {
-			Nan::ThrowTypeError("getAnnotations takes exactly one argument");
+		if (info.Length() != 2) {
+			Nan::ThrowTypeError("getAnnotations takes exactly two arguments");
 			return;
 		}
 
 		if (!info[0]->IsString()) {
-			Nan::ThrowTypeError("Argument should be a path to a PDF file");
+			Nan::ThrowTypeError("First argument should be a path to a PDF file");
+			return;
+		}
+
+		if (!info[1]->IsString()) {
+			Nan::ThrowTypeError("Second argument should be a path to a directory where images will be written");
 			return;
 		}
 
@@ -265,6 +270,7 @@ namespace binding {
 		uMap = globalParams->getTextEncoding();
 
 		std::string fnameString(*v8::String::Utf8Value(info[0]));
+		std::string imagePath(*v8::String::Utf8Value(info[1]));
 
 		filename = new GooString(fnameString.c_str());
 		doc = PDFDocFactory().createPDFDoc(*filename, NULL, NULL);
@@ -273,7 +279,7 @@ namespace binding {
 			Nan::ThrowError("Could not open PDF at given filename.");
 		} else {
 			for (int i = 1; i <= doc->getNumPages(); i++) {
-				std::list<annotation_t> page_annots = process_page(uMap, doc, i);
+				std::list<annotation_t> page_annots = process_page(uMap, doc, i, imagePath);
 
 				annots.splice(annots.end(), page_annots);
 			}

@@ -2,6 +2,7 @@
 // vim: set ft=javascript
 
 const path = require('path')
+    , tmp = require('tmp')
     , annotsToOAC = require('../oac')
     , { getAnnotations } = require('../')
 
@@ -13,9 +14,11 @@ const argv = require('yargs')
 	.argv
 
 argv._.forEach(filename => {
-  const annotations = getAnnotations(filename)
+  const imageDirectory = tmp.dirSync()
+      , annotations = getAnnotations(filename, imageDirectory.name)
 
   annotsToOAC(annotations, {
+    imageDirectory: imageDirectory.name,
     pdfURI: 'file://' + path.resolve(filename)
   });
 });
