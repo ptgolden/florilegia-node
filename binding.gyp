@@ -11,7 +11,7 @@
 			],
 			"include_dirs": [
 				"<!(node -e \"require('nan')\")",
-				"<!@(pkg-config poppler --cflags-only-I | sed s/-i//g)",
+				"<!@(pkg-config poppler --cflags-only-I | sed s/-I//g)",
 				"lib",
 
 			],
