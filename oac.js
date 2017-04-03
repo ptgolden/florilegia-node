@@ -1,11 +1,9 @@
 "use strict";
 
 const fs = require('fs')
-    , path = require('path')
     , glob = require('glob')
-    , { Writer, Util } = require('n3')
+    , { Util, Writer } = require('n3')
     , { createLiteral } = Util
-    , { getAnnotations } = require('./')
 
 const prefixes = {
   oa: require('lov-ns/oa'),
@@ -19,27 +17,26 @@ const prefixes = {
 
 const $ = require('rdf-builder')({ prefixes })
 
-function makeURITag(email, filename) {
-  const d = new Date()
+module.exports = function annotationsToOAC(annotations, opts={}) {
+  const {
+    pdfURI,
+    baseURI='http://example.org/#',
+    outstream=process.stdout
+  } = opts
 
-  return [
-    'tag',
-    email,
-    `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`,
-    path.basename(filename)
-  ].join(':')
-}
+  const writer = new Writer(outstream, {
+    prefixes,
+    format: 'ntriples',
+    end: outstream !== process.stdout
+  })
 
-function pdf2oac(user='http://example.com', filename, cb) {
-  const writer = new Writer({ prefixes, format: 'ntriples' })
-      , annotations = getAnnotations(filename)
-
-  let triples = []
+  const images = {}
 
   annotations.forEach((annotation, i) => {
+    let triples = []
+
     const { page, motivation, body_text, highlighted_text } = annotation
-        , baseTag = makeURITag(user, filename, `annot-${i + 1}`)
-        , makeAnnotURI = p => $(`${baseTag}/${p ? p : ''}`)
+        , makeAnnotURI = p => $(`${baseURI}annotation-${i}/${p ? p : ''}`)
 
     const $annot = makeAnnotURI()
         , $target = makeAnnotURI('target')
@@ -50,10 +47,13 @@ function pdf2oac(user='http://example.com', filename, cb) {
         'rdf:type': 'oa:Annotation',
         'oa:hasMotivation': `oa:${motivation}`,
         'oa:hasTarget': $target,
-        'oa:hasSource': `file://${filename}`,
       }),
 
-      $target('oa:hasSelector')($pdfSelector),
+
+      $target({
+        'oa:hasSource': pdfURI,
+        'oa:hasSelector': $pdfSelector
+      }),
 
       $pdfSelector({
         'rdf:type': 'oa:FragmentSelector',
@@ -95,27 +95,32 @@ function pdf2oac(user='http://example.com', filename, cb) {
       const file = glob.sync('TEST/' + annotation.object_id + '*').slice(-1)[0];
 
       if (file) {
-        const $imageBody = makeAnnotURI('stamp')
-            , content = fs.readFileSync(file)
-            , buf = new Buffer(content);
+        const content = fs.readFileSync(file)
+            , buf = new Buffer(content)
+            , b64 = buf.toString('base64')
+
+        if (!images.hasOwnProperty(b64)) {
+          const $imageURI = $(`${baseURI}image-${Object.keys(images).length}`)
+
+          triples = triples.concat(
+            $imageURI({
+              'dce:format': createLiteral('image/png'),
+              'rdf:type': ['dctype:Image', 'cnt:ContentAsBase64'],
+              'cnt:bytes': createLiteral(buf.toString('base64')),
+            })
+          )
+
+          images[b64] = $imageURI;
+        }
 
         triples = triples.concat(
-          $annot('oa:hasBody')($imageBody),
-
-          $imageBody({
-            'dce:format': createLiteral('image/png'),
-            'rdf:type': ['dctype:Image', 'cnt:ContentAsBase64'],
-            'cnt:bytes': createLiteral(buf.toString('base64')),
-          })
+          $annot('oa:hasBody')(images[b64])
         )
       }
-
     }
 
     triples.forEach(triple => writer.addTriple(triple));
   });
 
-  writer.end(cb);
+  writer.end();
 }
-
-module.exports = { pdf2oac }
