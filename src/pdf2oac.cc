@@ -5,6 +5,13 @@
 
 #include <nan.h>
 
+#include "streaming-worker.h"
+
+#define JSON_NOEXCEPTION 1
+#include "json.hpp"
+
+#define MULTITHREADED 1
+
 #include <goo/GooString.h>
 #include <Annot.h>
 #include <CharTypes.h>
@@ -18,6 +25,8 @@
 #include <UnicodeMap.h>
 #include <UTF.h>
 #include <XRef.h>
+
+using json = nlohmann::json;
 
 struct annotation_t {
 	int page;
@@ -70,6 +79,7 @@ std::list<rect_t> getRectanglesForAnnot(Annot *annot) {
 	}
 
 	delete quads;
+	delete rect;
 	annotObj.free();
 	obj1.free();
 
@@ -136,12 +146,35 @@ std::string getTextForMarkupAnnot(UnicodeMap *u_map, Annot *annot) {
 			text += " ";
 		}
 		text += gooStringToStdString(u_map, str);
+		delete str;
 	}
 
 
 	textPage->decRefCnt();
 	delete textOut;
 	return text;
+}
+
+std::string annotationToJSON(annotation_t *annot) {
+	json out;
+
+	out["page"] = annot->page;
+	out["object_id"] = annot->object_id;
+	out["motivation"] = annot->motivation;
+
+	if (annot->body_text.length() > 0) {
+		out["body_text"] = annot->body_text;
+	}
+
+	if (annot->highlighted_text.length() > 0) {
+		out["highlighted_text"] = annot->highlighted_text;
+	}
+
+	if (annot->stamp_label) {
+		out["stamp_label"] = annot->stamp_label;
+	}
+
+	return out.dump();
 }
 
 
@@ -204,109 +237,72 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 	return processed_annots;
 }
 
-namespace binding {
-	using namespace Nan;
-	using namespace v8;
+class AnnotationWorker : public StreamingWorker {
+	public:
+	AnnotationWorker(Callback *data, Callback *complete, Callback *error_callback, v8::Local<v8::Object> &options)
+		: StreamingWorker(data, complete, error_callback) {
 
-	v8::Local<v8::Object> annotation_as_object(annotation_t *annot) {
-		v8::Local<v8::Object> obj = Nan::New<v8::Object>();
+		// TODO: handle cases where options weren't passed
+		v8::Local<v8::Value> pdfFilename_ = options->Get(Nan::New<v8::String>("pdfFilename").ToLocalChecked());
+		v8::Local<v8::Value> imageDirectory_ = options->Get(Nan::New<v8::String>("imageDirectory").ToLocalChecked());
 
-		obj->Set(
-			Nan::New("page").ToLocalChecked(),
-			Nan::New(annot->page));
+		v8::String::Utf8Value s(pdfFilename_);
+		pdfFilename = *s;
 
-		obj->Set(
-			Nan::New("object_id").ToLocalChecked(),
-			Nan::New(annot->object_id));
+		v8::String::Utf8Value t(imageDirectory_);
+		imageDirectory = *t;
 
-		obj->Set(
-			Nan::New("motivation").ToLocalChecked(),
-			Nan::New(annot->motivation).ToLocalChecked());
-
-		if (annot->body_text.length() > 0) {
-			obj->Set(
-				Nan::New("body_text").ToLocalChecked(),
-				Nan::New(annot->body_text.c_str()).ToLocalChecked());
+		if (!globalParams) {
+			globalParams = new GlobalParams();
 		}
-
-		if (annot->highlighted_text.length() > 0) {
-			obj->Set(
-				Nan::New("highlighted_text").ToLocalChecked(),
-				Nan::New(annot->highlighted_text.c_str()).ToLocalChecked());
-		}
-
-		if (annot->stamp_label) {
-			obj->Set(
-				Nan::New("stamp_label").ToLocalChecked(),
-				Nan::New(annot->stamp_label).ToLocalChecked());
-		}
-
-		return obj;
 	}
 
+	~AnnotationWorker() {
+	}
 
-	NAN_METHOD(GetAnnotations) {
+	void Execute (const AsyncProgressWorker::ExecutionProgress &progress) {
 		PDFDoc *doc;
 		UnicodeMap *uMap;
 		GooString *filename;
-		std::list<annotation_t> annots;
 
-		if (info.Length() != 2) {
-			Nan::ThrowTypeError("getAnnotations takes exactly two arguments");
-			return;
-		}
-
-		if (!info[0]->IsString()) {
-			Nan::ThrowTypeError("First argument should be a path to a PDF file");
-			return;
-		}
-
-		if (!info[1]->IsString()) {
-			Nan::ThrowTypeError("Second argument should be a path to a directory where images will be written");
-			return;
-		}
-
-		globalParams = new GlobalParams();
 		uMap = globalParams->getTextEncoding();
 
-		std::string fnameString(*v8::String::Utf8Value(info[0]));
-		std::string imagePath(*v8::String::Utf8Value(info[1]));
-
-		filename = new GooString(fnameString.c_str());
+		filename = new GooString(pdfFilename.c_str());
 		doc = PDFDocFactory().createPDFDoc(*filename, NULL, NULL);
 
 		if (!doc->isOk()) {
 			Nan::ThrowError("Could not open PDF at given filename.");
-		} else {
-			for (int i = 1; i <= doc->getNumPages(); i++) {
-				std::list<annotation_t> page_annots = process_page(uMap, doc, i, imagePath);
-
-				annots.splice(annots.end(), page_annots);
-			}
-
-			int i = 0;
-			v8::Local<v8::Array> annots_list = New<v8::Array>(annots.size());
-
-			for (annotation_t annot : annots) {
-				v8::Local<v8::Object> annot_obj = annotation_as_object(&annot);
-				annots_list->Set(i, annot_obj);
-				i += 1;
-			}
-
-			info.GetReturnValue().Set(annots_list);
 		}
 
-		uMap->decRefCnt();
-		delete globalParams;
+		for (int i = 1; i <= doc->getNumPages(); i++) {
+			std::list<annotation_t> page_annots = process_page(uMap, doc, i, imageDirectory);
+
+			for (annotation_t annot : page_annots) {
+				std::string annotJSON = annotationToJSON(&annot);
+				Message tosend("annotation", annotJSON);
+				writeToNode(progress, tosend);
+			}
+		}
+
 		delete filename;
 		delete doc;
+		uMap->decRefCnt();
+		// FIXME: I don't know how to deal with globalParams in a multithreaded environment
+		// delete globalParams;
 	}
 
-	void init(v8::Local<v8::Object> exports) {
-		exports->Set(
-			Nan::New("getAnnotations").ToLocalChecked(),
-			Nan::New<v8::FunctionTemplate>(GetAnnotations)->GetFunction());
-	}
+	private:
+	std::string pdfFilename;
+	std::string imageDirectory;
 
-	NODE_MODULE(addon, init)
+};
+
+StreamingWorker * create_worker(Callback *data
+    , Callback *complete
+    , Callback *error_callback,
+    v8::Local<v8::Object> & options) {
+
+	return new AnnotationWorker(data, complete, error_callback, options);
 }
+
+NODE_MODULE(annotation_worker, StreamWorkerWrapper::Init)

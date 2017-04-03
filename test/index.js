@@ -3,7 +3,8 @@
 const fs = require('fs')
     , path = require('path')
     , test = require('blue-tape')
-    , { getAnnotations } = require('../')
+    , worker = require('streaming-worker')
+    , addonPath = require('../').path
 
 function getPdfCreator(filename) {
   return filename.replace(/.*\//, '').replace('.pdf', '');
@@ -57,14 +58,21 @@ test('Extracting annotations', t => {
   cases.forEach(({ dir, expected, msg }) => {
     const pdfs = fs.readdirSync(path.join(__dirname, dir))
 
-    pdfs.forEach(filename => {
-      t.deepEqual(
-        getAnnotations(path.join(__dirname, dir, filename)).map(annot => {
-          delete annot.object_id;
-          return annot;
-        }),
-        expected,
-        `${msg} (${getPdfCreator(filename)}).`)
+    pdfs.forEach(pdfFilename => {
+      const annot = worker(addonPath, {
+        pdfFilename: path.join(__dirname, dir, pdfFilename),
+        imageDirectory: '/tmp/tmp-170183dYmOErSHcrf'
+      })
+
+      annot.from.on('annotation', d => {
+        t.deepEqual(
+          [JSON.parse(d)].map(annot => {
+            delete annot.object_id;
+            return annot;
+          }),
+          expected,
+          `${msg} (${getPdfCreator(pdfFilename)}).`)
+      })
     })
   })
 

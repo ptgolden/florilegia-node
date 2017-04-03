@@ -11,6 +11,7 @@
 			],
 			"include_dirs": [
 				"<!(node -e \"require('nan')\")",
+				"<!(node -e \"require('streaming-worker-sdk')\")",
 				"<!@(pkg-config poppler --cflags-only-I | sed s/-I//g)",
 				"lib",
 
