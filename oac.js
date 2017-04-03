@@ -2,42 +2,31 @@
 
 const fs = require('fs')
     , glob = require('glob')
+    , through = require('through2')
     , { Util, Writer } = require('n3')
     , { createLiteral } = Util
-
-const prefixes = {
-  oa: require('lov-ns/oa'),
-  dce: require('lov-ns/dce'),
-  dctype: require('lov-ns/dctype'),
-  cnt: require('lov-ns/cnt'),
-  bibo: require('lov-ns/bibo'),
-  rdf: require('lov-ns/rdf'),
-  rdfs: require('lov-ns/rdfs'),
-}
+    , prefixes = require('./prefixes')
 
 const $ = require('rdf-builder')({ prefixes })
 
-module.exports = function annotationsToOAC(annotations, opts={}) {
+module.exports = function annotationsToOAC(opts={}) {
   const {
     imageDirectory,
     pdfURI,
     baseURI='http://example.org/#',
-    outstream=process.stdout
+    graph=null
   } = opts
 
-  const writer = new Writer(outstream, {
-    prefixes,
-    format: 'ntriples',
-    end: outstream !== process.stdout
-  })
-
   const images = {}
+  const base = graph == undefined ? {} : { graph }
 
-  annotations.forEach((annotation, i) => {
+  let i = 0;
+
+  return through.obj(function (annotation, enc, cb) {
     let triples = []
 
     const { page, motivation, body_text, highlighted_text } = annotation
-        , makeAnnotURI = p => $(`${baseURI}annotation-${i}/${p ? p : ''}`)
+        , makeAnnotURI = p => $(`${baseURI}annotation-${i}${p ? ('/' + p) : ''}`)
 
     const $annot = makeAnnotURI()
         , $target = makeAnnotURI('target')
@@ -120,8 +109,11 @@ module.exports = function annotationsToOAC(annotations, opts={}) {
       }
     }
 
-    triples.forEach(triple => writer.addTriple(triple));
-  });
+    triples.forEach(triple => {
+      this.push(Object.assign({}, base, triple));
+    })
 
-  writer.end();
+    i += 1;
+    cb();
+  });
 }
