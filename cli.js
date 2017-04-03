@@ -3,8 +3,8 @@
 
 const path = require('path')
     , tmp = require('tmp')
-    , annotsToOAC = require('../oac')
-    , { getAnnotations } = require('../')
+    , annotsToOAC = require('./oac')
+    , { getAnnotations } = require('./')
 
 const argv = require('yargs')
   .usage('Convert annotated PDF files to Web Annotation Data Model')
@@ -22,10 +22,3 @@ argv._.forEach(filename => {
     pdfURI: 'file://' + path.resolve(filename)
   });
 });
-
-  /*
-
-
-
-
-*/
