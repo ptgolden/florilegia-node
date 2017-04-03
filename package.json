@@ -9,7 +9,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "GPL-3.0",
+  "license": "AGPL-3.0",
   "gypfile": true,
   "devDependencies": {
     "blue-tape": "^1.0.0"

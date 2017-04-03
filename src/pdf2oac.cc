@@ -9,7 +9,7 @@
 #include <Annot.h>
 #include <CharTypes.h>
 #include <GlobalParams.h>
-#include <utils/ImageOutputDev.h>
+#include <ImageOutputDev.h>
 #include <Page.h>
 #include <PDFDoc.h>
 #include <PDFDocEncoding.h>
