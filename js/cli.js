@@ -39,4 +39,11 @@ argv._.map(p => path.resolve(p)).forEach(pdfFilename => {
         ? JSONStream.stringify()
         : N3.StreamWriter({ prefixes, format: argv.format, end: false }))
     .pipe(process.stdout)
+    .on('error', err => {
+      if (err.code === 'EPIPE') {
+        process.exit(0);
+      }
+
+      throw err;
+    })
 });

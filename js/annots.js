@@ -22,15 +22,19 @@ module.exports = function parseAnnots(pdfFilename, imageDirectory) {
   })
 
   function cleanUp() {
+    worker.close();
+
     if (tmpDirectory) {
-      // process.stderr.write('Cleaning up temporary directory ' + tmpDirectory.name + '\n');
+      setTimeout(() => {
+          // process.stderr.write('Cleaning up temporary directory ' + tmpDirectory.name + '\n');
 
-      fs.readdirSync(tmpDirectory.name).forEach(filename => {
-        fs.unlinkSync(path.join(tmpDirectory.name, filename))
-      })
+          fs.readdirSync(tmpDirectory.name).forEach(filename => {
+            fs.unlinkSync(path.join(tmpDirectory.name, filename))
+          })
 
-      tmpDirectory.removeCallback();
-      tmpDirectory = null;
+          tmpDirectory.removeCallback();
+          tmpDirectory = null;
+      }, 0);
     }
   }
 

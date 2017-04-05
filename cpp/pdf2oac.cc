@@ -275,9 +275,12 @@ class AnnotationWorker : public StreamingWorker {
 		}
 
 		for (int i = 1; i <= doc->getNumPages(); i++) {
+			if (this->closed()) break;
+
 			std::list<annotation_t> page_annots = process_page(uMap, doc, i, imageDirectory);
 
 			for (annotation_t annot : page_annots) {
+				if (this->closed()) break;
 				std::string annotJSON = annotationToJSON(&annot);
 				Message tosend("annotation", annotJSON);
 				writeToNode(progress, tosend);
