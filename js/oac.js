@@ -13,11 +13,11 @@ module.exports = function annotAsTriples(opts={}) {
     imageDirectory,
     pdfURI='ex:pdf',
     baseURI='http://example.org/#',
-    graph=null
+    graphURI=null
   } = opts
 
   const images = {}
-  const base = graph == undefined ? {} : { graph }
+  const base = graphURI == undefined ? {} : { graph: graphURI }
 
   let i = 0;
 

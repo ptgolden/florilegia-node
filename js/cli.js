@@ -36,7 +36,7 @@ argv._.map(p => path.resolve(p)).forEach(pdfFilename => {
     pdfFilename,
     pdfURI: argv['pdf-uri'] || 'file://' + pdfFilename,
     baseURI: argv['base-uri'],
-    graph: argv['graph-uri']
+    graphURI: argv['graph-uri']
   })
 
   stream.on('data', triple => {
