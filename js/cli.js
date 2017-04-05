@@ -2,9 +2,10 @@
 // vim: set ft=javascript
 
 const path = require('path')
+    , N3 = require('n3')
+    , JSONStream = require('JSONStream')
     , pdf2oac = require('./')
     , prefixes = require('./prefixes')
-    , { Writer } = require('n3')
 
 const argv = require('yargs')
   .usage('Convert annotated PDF files to Web Annotation Data Model')
@@ -25,23 +26,17 @@ const argv = require('yargs')
   .help('h', 'help')
 	.argv
 
-const writer = new Writer(process.stdout, {
-  prefixes,
-  end: false,
-  format: argv.format
-})
-
 argv._.map(p => path.resolve(p)).forEach(pdfFilename => {
-  const stream = pdf2oac({
-    pdfFilename,
+  const tripleStream = pdf2oac(pdfFilename, {
     pdfURI: argv['pdf-uri'] || 'file://' + pdfFilename,
     baseURI: argv['base-uri'],
     graphURI: argv['graph-uri']
   })
 
-  stream.on('data', triple => {
-    writer.addTriple(triple);
-  }).on('end', () => {
-    writer.end();
-  })
+  tripleStream
+    .pipe(
+      argv.format === 'json'
+        ? JSONStream.stringify()
+        : N3.StreamWriter({ prefixes, format: argv.format, end: false }))
+    .pipe(process.stdout)
 });

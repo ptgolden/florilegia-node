@@ -69,8 +69,8 @@ test('Extracting annotations', t => {
         `${msg} (${getPdfCreator(filename)}).`)
     }
 
-    pdfs.forEach(pdfFilename => {
-      parseAnnots({ pdfFilename }).pipe(concat(runTest(pdfFilename)))
+    pdfs.forEach(filename => {
+      parseAnnots(filename).pipe(concat(runTest(filename)))
     })
   })
 

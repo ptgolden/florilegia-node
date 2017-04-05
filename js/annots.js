@@ -8,16 +8,12 @@ const fs = require('fs')
     , streamingWorker = require('streaming-worker')
     , popplerAddon = require('bindings')('pdf2oac.node')
 
-module.exports = function parseAnnots(opts) {
-  const { pdfFilename } = opts
-
-  let { imageDirectory } = opts
-    , tmpDirectory
+module.exports = function parseAnnots(pdfFilename, imageDirectory) {
+  let tmpDirectory
 
   if (!imageDirectory) {
     tmpDirectory = tmp.dirSync();
     imageDirectory = tmpDirectory.name;
-    opts.imageDirectory = imageDirectory;
   }
 
   const worker = streamingWorker(popplerAddon.path, {
@@ -41,13 +37,10 @@ module.exports = function parseAnnots(opts) {
   onDeath(cleanUp);
   process.on('exit', cleanUp);
 
-  const stream = worker.from.stream()
-    .pipe(through.obj(function ([,data], enc, cb) {
-      this.push(JSON.parse(data));
+  return worker.from.stream()
+    .pipe(through.obj(function (data, enc, cb) {
+      this.push(JSON.parse(data[1]));
       cb();
     }))
-
-  stream.on('end', cleanUp)
-
-  return stream;
+    .on('end', cleanUp)
 }
