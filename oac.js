@@ -3,16 +3,15 @@
 const fs = require('fs')
     , glob = require('glob')
     , through = require('through2')
-    , { Util, Writer } = require('n3')
-    , { createLiteral } = Util
+    , { createLiteral } = require('n3').Util
     , prefixes = require('./prefixes')
 
 const $ = require('rdf-builder')({ prefixes })
 
-module.exports = function annotationsToOAC(opts={}) {
+module.exports = function annotAsTriples(opts={}) {
   const {
     imageDirectory,
-    pdfURI,
+    pdfURI='ex:pdf',
     baseURI='http://example.org/#',
     graph=null
   } = opts

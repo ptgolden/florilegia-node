@@ -2,13 +2,9 @@
 // vim: set ft=javascript
 
 const path = require('path')
-    , tmp = require('tmp')
-    , streamify = require('stream-array')
-    , annotsToOAC = require('./oac')
+    , pdf2oac = require('./')
     , prefixes = require('./prefixes')
     , { Writer } = require('n3')
-    , { getAnnotations } = require('./')
-
 
 const argv = require('yargs')
   .usage('Convert annotated PDF files to Web Annotation Data Model')
@@ -18,7 +14,7 @@ const argv = require('yargs')
   .option('format', {
     alias: 'f',
     describe: 'Output format for RDF',
-    choices: ['turtle', 'trig', 'n-triples', 'n-quads'],
+    choices: ['turtle', 'trig', 'n-triples', 'n-quads', 'json'],
     default: 'turtle'
   })
   .option('base-uri', {
@@ -35,21 +31,17 @@ const writer = new Writer(process.stdout, {
   format: argv.format
 })
 
-
-argv._.forEach(filename => {
-  const imageDirectory = tmp.dirSync()
-      , annotations = getAnnotations(filename, imageDirectory.name)
-
-  const oacStream = annotsToOAC({
-    imageDirectory: imageDirectory.name,
-    pdfURI: argv['pdf-uri'] || 'file://' + path.resolve(filename),
+argv._.map(p => path.resolve(p)).forEach(pdfFilename => {
+  const stream = pdf2oac({
+    pdfFilename,
+    pdfURI: argv['pdf-uri'] || 'file://' + pdfFilename,
     baseURI: argv['base-uri'],
     graph: argv['graph-uri']
-  }).on('data', triple => {
+  })
+
+  stream.on('data', triple => {
     writer.addTriple(triple);
   }).on('end', () => {
     writer.end();
   })
-
-  streamify(annotations).pipe(oacStream)
 });

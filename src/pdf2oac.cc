@@ -284,6 +284,8 @@ class AnnotationWorker : public StreamingWorker {
 			}
 		}
 
+		close();
+
 		delete filename;
 		delete doc;
 		uMap->decRefCnt();

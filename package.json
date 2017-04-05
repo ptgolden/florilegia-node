@@ -13,16 +13,17 @@
   "license": "AGPL-3.0",
   "gypfile": true,
   "devDependencies": {
-    "blue-tape": "^1.0.0"
+    "blue-tape": "^1.0.0",
+    "concat-stream": "^1.6.0"
   },
   "dependencies": {
     "bindings": "^1.2.1",
+    "death": "^1.1.0",
     "glob": "^7.1.1",
     "lov-ns": "^1.1.1",
     "n3": "^0.8.4",
     "nan": "^2.4.0",
     "rdf-builder": "^1.1.2",
-    "stream-array": "^1.1.2",
     "streaming-worker": "^1.0.1",
     "streaming-worker-sdk": "^0.9.3",
     "through2": "^2.0.3",
