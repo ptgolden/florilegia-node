@@ -2,9 +2,9 @@
   "name": "pdf2oac",
   "version": "3.0.3",
   "description": "",
-  "main": "index.js",
+  "main": "js/index.js",
   "scripts": {
-    "test": "tape test",
+    "test": "tape js/test",
     "install": "node-gyp rebuild"
   },
   "bin": "./cli.js",

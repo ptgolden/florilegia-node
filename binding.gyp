@@ -3,7 +3,7 @@
 		{
 			"target_name": "pdf2oac",
 			"sources": [
-				"src/pdf2oac.cc",
+				"cpp/pdf2oac.cc",
 				"lib/ImageOutputDev.cc"
 			],
 			"libraries": [
