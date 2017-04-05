@@ -7,7 +7,11 @@
     "test": "tape js/test",
     "install": "node-gyp rebuild"
   },
-  "bin": "./cli.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ptgolden/pdf2oac-js.git"
+  },
+  "bin": "./js/cli.js",
   "keywords": [],
   "author": "",
   "license": "AGPL-3.0",
