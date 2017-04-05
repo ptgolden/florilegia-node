@@ -54,25 +54,34 @@ const cases = [
   }
 ]
 
-test('Extracting annotations', t => {
-  cases.forEach(({ dir, expected, msg }) => {
-    const pdfs = fs.readdirSync(path.join(__dirname, dir))
-      .map(p => path.resolve(__dirname, dir, p))
+function deleteObjectID(annot) {
+  delete annot.object_id;
+  return annot;
+}
 
-    function runTest(filename) {
-      return data =>
-        t.deepEqual(data.map(annot => {
-          delete annot.object_id;
-          return annot;
-        }),
-        expected,
-        `${msg} (${getPdfCreator(filename)}).`)
-    }
+test('Extracting annotations from PDFS', t => Promise.all(
+  cases.map(({ dir, expected, msg }) =>
+    new Promise((resolve, reject) =>
+      fs.readdir(path.resolve(__dirname, dir), (err, pdfFiles) => {
+        if (err) reject(err)
 
-    pdfs.forEach(filename => {
-      parseAnnots(filename).pipe(concat(runTest(filename)))
-    })
-  })
+        const toAbsolutePath = f => path.resolve(__dirname, dir, f)
 
-  return Promise.resolve()
-})
+        const runTest = filename =>
+          new Promise((resolve, reject) =>
+            parseAnnots(filename)
+              .on('error', reject)
+              .pipe(concat(annots => {
+                t.deepEqual(
+                  annots.map(deleteObjectID),
+                  expected,
+                  `${msg} (${getPdfCreator(filename)}).`);
+
+                resolve()
+              })))
+
+        resolve(Promise.all(pdfFiles.map(toAbsolutePath).map(runTest)))
+      })
+    )
+  )
+))

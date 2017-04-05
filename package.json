@@ -4,7 +4,7 @@
   "description": "",
   "main": "js/index.js",
   "scripts": {
-    "test": "tape js/test",
+    "test": "tape js/test/*.js",
     "install": "node-gyp rebuild"
   },
   "repository": {
