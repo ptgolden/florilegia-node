@@ -3,6 +3,9 @@
 
 const path = require('path')
     , N3 = require('n3')
+    , pump = require('pump')
+    , jsonld = require('jsonld')
+    , concat = require('concat-stream')
     , JSONStream = require('JSONStream')
     , pdf2oac = require('./')
     , prefixes = require('./prefixes')
@@ -15,7 +18,7 @@ const argv = require('yargs')
   .option('format', {
     alias: 'f',
     describe: 'Output format for RDF',
-    choices: ['turtle', 'trig', 'n-triples', 'n-quads', 'json'],
+    choices: ['turtle', 'trig', 'n-triples', 'n-quads', 'json', 'jsonld'],
     default: 'turtle'
   })
   .option('base-uri', {
@@ -33,17 +36,31 @@ argv._.map(p => path.resolve(p)).forEach(pdfFilename => {
     graphURI: argv['graph-uri']
   })
 
-  tripleStream
-    .pipe(
+  let rdfStream = pump(
+      tripleStream,
       argv.format === 'json'
         ? JSONStream.stringify()
-        : N3.StreamWriter({ prefixes, format: argv.format, end: false }))
-    .pipe(process.stdout)
-    .on('error', err => {
-      if (err.code === 'EPIPE') {
-        process.exit(0);
-      }
+        : N3.StreamWriter({
+            prefixes,
+            format: argv.format === 'jsonld' ? 'ntriples' : argv.format,
+            end: false
+          }))
 
-      throw err;
-    })
+  if (argv.format === 'jsonld') {
+    rdfStream = pump(rdfStream, concat((triples) => {
+      jsonld.fromRDF(triples, { format: 'application/nquads' }, (err, doc) => {
+        if (err) throw err;
+        process.stdout.write(JSON.stringify(doc, true, '  ') + '\n')
+      })
+    }))
+  } else {
+    pump(rdfStream, process.stdout)
+      .on('error', err => {
+        if (err.code === 'EPIPE') {
+          process.exit(0);
+        }
+
+        throw err;
+      })
+  }
 });
