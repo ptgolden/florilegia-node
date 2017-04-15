@@ -33,11 +33,16 @@ function annotTransform(opts) {
   });
 }
 
+function defaultAnnotURI(part, i, annot,opts) {
+  return `${opts.baseURI || ''}annotation-${i}${part ? ('/' + part) : ''}`
+}
+
 function annotToTriples(annotation, opts={}, state=fnState(opts)) {
   const {
     imageDirectory,
     pdfURI='ex:pdf',
     baseURI='http://example.org/#',
+    mintAnnotURI=defaultAnnotURI
   } = opts
 
   const { $, i, images } = state
@@ -45,7 +50,7 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
   let triples = []
 
   const { page, motivation, body_text, highlighted_text } = annotation
-      , makeAnnotURI = p => $(`${baseURI}annotation-${i}${p ? ('/' + p) : ''}`)
+      , makeAnnotURI = p => $(mintAnnotURI(p, i, annotation, opts))
 
   const $annot = makeAnnotURI()
       , $target = makeAnnotURI('target')
