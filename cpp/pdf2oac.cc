@@ -49,14 +49,20 @@ std::string gooStringToStdString(UnicodeMap *u_map, GooString *rawString) {
 	char buf[8];
 	std::string markup_text = "";
 
-	int unicodeLength = TextStringToUCS4(rawString, &u);
-	for (int i = 0; i < unicodeLength; i++) {
-		int n = u_map->mapUnicode(u[i], buf, sizeof(buf));
-		for (int j = 0; j < n; j++) {
-			markup_text += buf[j];
+	if (u_map) {
+		int unicodeLength = TextStringToUCS4(rawString, &u);
+
+		for (int i = 0; i < unicodeLength; i++) {
+			int n = u_map->mapUnicode(u[i], buf, sizeof(buf));
+			for (int j = 0; j < n; j++) {
+				markup_text += buf[j];
+			}
 		}
+		gfree(u);
+	} else {
+		auto str = rawString->getCString();
+		markup_text += str;
 	}
-	gfree(u);
 
 	return markup_text;
 }
@@ -145,7 +151,7 @@ std::string getTextForMarkupAnnot(UnicodeMap *u_map, Annot *annot) {
 		if (text.length() > 0) {
 			text += " ";
 		}
-		text += gooStringToStdString(u_map, str);
+		text += gooStringToStdString(NULL, str);
 		delete str;
 	}
 
