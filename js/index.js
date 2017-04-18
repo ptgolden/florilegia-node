@@ -6,8 +6,6 @@ const fs = require('fs')
     , { annotTransform } = require('./oac')
 
 module.exports = function (pdfFilename, opts) {
-  const { imageDirectory } = opts
-
   pdfFilename = path.resolve(pdfFilename)
 
   try {
@@ -16,5 +14,7 @@ module.exports = function (pdfFilename, opts) {
     throw new Error(`No such file: '${pdfFilename}'`);
   }
 
-  return parseAnnots(pdfFilename, imageDirectory).pipe(annotTransform(opts))
+  const annotStream = parseAnnots(pdfFilename);
+
+  return annotStream.pipe(annotTransform(opts))
 }

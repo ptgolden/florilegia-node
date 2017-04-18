@@ -1,6 +1,7 @@
 "use strict";
 
 const fs = require('fs')
+    , path = require('path')
     , glob = require('glob')
     , through = require('through2')
     , rdfBuilder = require('rdf-builder')
@@ -39,7 +40,6 @@ function defaultAnnotURI(part, i, annot,opts) {
 
 function annotToTriples(annotation, opts={}, state=fnState(opts)) {
   const {
-    imageDirectory,
     pdfURI='ex:pdf',
     baseURI='http://example.org/#',
     mintAnnotURI=defaultAnnotURI
@@ -105,33 +105,22 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
     )
   }
 
-  if (motivation === 'bookmarking' && imageDirectory) {
-    const file = glob.sync(imageDirectory + '/' + annotation.object_id + '*').slice(-1)[0];
+  if (motivation === 'bookmarking' && annotation.stamp_body) {
+    const $imageURI = $(`${baseURI}image-${Object.keys(images).length}`)
 
-    if (file) {
-      const content = fs.readFileSync(file)
-          , buf = new Buffer(content)
-          , b64 = buf.toString('base64')
+    triples = triples.concat(
+      $imageURI({
+        'dce:format': createLiteral('image/png'),
+        'rdf:type': ['dctype:Image', 'cnt:ContentAsBase64'],
+        'cnt:bytes': createLiteral(annotation.stamp_body),
+      })
+    )
 
-      if (!images.hasOwnProperty(b64)) {
-        const $imageURI = $(`${baseURI}image-${Object.keys(images).length}`)
+    images[annotation.stamp_body] = $imageURI;
 
-        triples = triples.concat(
-          $imageURI({
-            'dce:format': createLiteral('image/png'),
-            'rdf:type': ['dctype:Image', 'cnt:ContentAsBase64'],
-            'cnt:bytes': createLiteral(buf.toString('base64')),
-          })
-        )
-
-        images[b64] = $imageURI;
-      }
-
-      triples = triples.concat(
-        $annot('oa:hasBody')(images[b64])
-      )
-    }
+    triples = triples.concat(
+      $annot('oa:hasBody')(images[annotation.stamp_body])
+    )
   }
-
   return triples
 }
