@@ -113,21 +113,22 @@ void writeStampToFile(Annot *annot, const char* objectID) {
 	splashOut = new SplashOutputDev(splashModeRGB8, 4, gFalse, color);
 	splashOut->startDoc(doc);
 
-	PDFRectangle *annotCrop = annot->getRect();
-	PDFRectangle *origCropBox = page->getCropBox();
+	PDFRectangle *annotRect = annot->getRect();
 	PDFRectangle *mediaBox = page->getMediaBox();
 
-	printf("Annotation %s: ", objectID);
-	printRectange(annotCrop);
+	double m = 8;
 
-	printf("Crop box: ");
-	printRectange(origCropBox);
+	gfx = page->createGfx(splashOut, 72 * m, 72 * m, 0,
+			gTrue, gTrue,
+			annotRect->x1 * m,
+			(mediaBox->y2 - annotRect->y2)* m,
+			(annotRect->x2 - annotRect->x1)* m,
+			(annotRect->y2 - annotRect->y1) * m,
+			gFalse, NULL, NULL);
 
-	printf("Media box: ");
-	printRectange(mediaBox);
+	annot->draw(gfx, gTrue);
 
-	double m = 3;
-
+	/*
 	page->displaySlice(splashOut, 72 * m, 72 * m, 0,
 			gTrue, gTrue,
 			annotCrop->x1 * m,
@@ -135,6 +136,7 @@ void writeStampToFile(Annot *annot, const char* objectID) {
 			(annotCrop->x2 - annotCrop->x1)* m,
 			(annotCrop->y2 - annotCrop->y1) * m,
 			gFalse);
+	*/
 
 	SplashBitmap *bitmap = splashOut->getBitmap();
 
