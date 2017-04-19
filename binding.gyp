@@ -4,7 +4,6 @@
 			"target_name": "pdf2oac",
 			"sources": [
 				"cpp/pdf2oac.cc",
-				"lib/ImageOutputDev.cc"
 			],
 			"libraries": [
 				"<!@(pkg-config --libs poppler)",

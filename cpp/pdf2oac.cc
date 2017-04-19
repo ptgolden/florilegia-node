@@ -16,12 +16,13 @@
 #include <Annot.h>
 #include <CharTypes.h>
 #include <GlobalParams.h>
-#include <ImageOutputDev.h>
+#include <SplashOutputDev.h>
+#include <splash/SplashBitmap.h>
+#include <TextOutputDev.h>
 #include <Page.h>
 #include <PDFDoc.h>
 #include <PDFDocEncoding.h>
 #include <PDFDocFactory.h>
-#include <TextOutputDev.h>
 #include <UnicodeMap.h>
 #include <UTF.h>
 #include <XRef.h>
@@ -92,35 +93,64 @@ std::list<rect_t> getRectanglesForAnnot(Annot *annot) {
 	return rects;
 }
 
-void writeStampToFile(Annot *annot, const char* objectID, std::string imgDirectory) {
+void printRectange(PDFRectangle *rect) {
+	printf("(%f,%f) , (%f,%f)\n", rect->x1, rect->y1, rect->x2, rect->y2);
+}
+
+void writeStampToFile(Annot *annot, const char* objectID) {
 	Gfx *gfx;
-	ImageOutputDev *imageOut;
+	SplashColor color;
+	SplashOutputDev *splashOut;
 	PDFDoc *doc;
 	Page *page;
 	int pageNum;
-
-	std::string imgRoot = imgDirectory + "/";
-	imgRoot.append(objectID);
-
-	char *pf = new char[imgRoot.length() + 1];
-	std::strcpy(pf, imgRoot.c_str());
-
-	imageOut = new ImageOutputDev(pf, NULL, gFalse);
-	imageOut->enablePNG(gTrue);
 
 	doc = annot->getDoc();
 	pageNum = annot->getPageNum();
 	page = doc->getPage(pageNum);
 
-	gfx = page->createGfx(imageOut, resolution, resolution, 0,
-			gTrue, gFalse,
-			-1, -1, -1, -1,
-			gFalse, NULL, NULL);
+	color[0] = color[1] = color[2] = 255;
+	splashOut = new SplashOutputDev(splashModeRGB8, 4, gFalse, color);
+	splashOut->startDoc(doc);
 
-	annot->draw(gfx, gFalse);
+	PDFRectangle *annotCrop = annot->getRect();
+	PDFRectangle *origCropBox = page->getCropBox();
+	PDFRectangle *mediaBox = page->getMediaBox();
 
-	delete pf;
-	delete imageOut;
+	printf("Annotation %s: ", objectID);
+	printRectange(annotCrop);
+
+	printf("Crop box: ");
+	printRectange(origCropBox);
+
+	printf("Media box: ");
+	printRectange(mediaBox);
+
+	double m = 3;
+
+	page->displaySlice(splashOut, 72 * m, 72 * m, 0,
+			gTrue, gTrue,
+			annotCrop->x1 * m,
+			(mediaBox->y2 - annotCrop->y2)* m,
+			(annotCrop->x2 - annotCrop->x1)* m,
+			(annotCrop->y2 - annotCrop->y1) * m,
+			gFalse);
+
+	SplashBitmap *bitmap = splashOut->getBitmap();
+
+	std::string f;
+	f += "/tmp/png/thing-";
+	f += objectID;
+	f += ".png";
+
+	printf("Printed to %s\n\n", f.c_str());
+
+
+	bitmap->writeImgFile(splashFormatPng, (char *)f.c_str(), 72, 72);
+
+	doc->replacePageDict(pageNum, 0, mediaBox, origCropBox);
+
+	delete splashOut;
 }
 
 
@@ -216,7 +246,7 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 				stamp->getSubject()->getCString(), "", ""
 			};
 
-			writeStampToFile(annot, std::to_string(stamp->getId()).c_str(), imgDirectory);
+			writeStampToFile(annot, std::to_string(stamp->getId()).c_str());
 
 			processed_annots.push_back(a);
 			break;
@@ -285,12 +315,14 @@ class AnnotationWorker : public StreamingWorker {
 
 			std::list<annotation_t> page_annots = process_page(uMap, doc, i, imageDirectory);
 
+			/*
 			for (annotation_t annot : page_annots) {
 				if (this->closed()) break;
 				std::string annotJSON = annotationToJSON(&annot);
 				Message tosend("annotation", annotJSON);
 				writeToNode(progress, tosend);
 			}
+			*/
 		}
 
 		close();
