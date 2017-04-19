@@ -4,6 +4,7 @@ const fs = require('fs')
     , path = require('path')
     , test = require('blue-tape')
     , concat = require('concat-stream')
+    , { PNG } = require('node-png')
     , parseAnnots = require('../annots')
 
 function getPdfCreator(filename) {
@@ -51,6 +52,31 @@ const cases = [
       }
     ],
     msg: 'should extract multiline highlight annotations'
+  },
+
+  {
+    dir: './pdfs/4_stamp',
+    transform: annots => {
+      const parser = new PNG()
+
+      if (!annots[0].stamp_bytes) {
+        throw new Error('Stamp was not extracted.');
+      }
+
+      const rawPNG = Buffer.from(annots[0].stamp_bytes, 'base64')
+
+      return new Promise((resolve, reject) =>
+        parser.parse(rawPNG, (err, data) => {
+          if (err) {
+            reject('Could not parse PNG from stamp.');
+          }
+
+          resolve(true);
+        })
+      )
+    },
+    expected: true,
+    msg: 'should extract stamps as PNG images'
   }
 ]
 
@@ -60,25 +86,25 @@ function deleteObjectID(annot) {
 }
 
 test('Extracting annotations from PDFS', t => Promise.all(
-  cases.map(({ dir, expected, msg }) =>
+  cases.map(({ dir, expected, transform, msg }) =>
     new Promise((resolve, reject) =>
       fs.readdir(path.resolve(__dirname, dir), (err, pdfFiles) => {
         if (err) reject(err)
 
         const toAbsolutePath = f => path.resolve(__dirname, dir, f)
 
-        const runTest = filename =>
-          new Promise((resolve, reject) =>
+        const runTest = async filename => {
+          const annots = await new Promise((resolve, reject) =>
             parseAnnots(filename)
               .on('error', reject)
-              .pipe(concat(annots => {
-                t.deepEqual(
-                  annots.map(deleteObjectID),
-                  expected,
-                  `${msg} (${getPdfCreator(filename)}).`);
+              .pipe(concat(resolve)))
 
-                resolve()
-              })))
+          const cmp = await (transform
+            ? transform(annots)
+            : annots.map(deleteObjectID))
+
+          return t.deepEqual(cmp, expected, `${msg} (${getPdfCreator(filename)}).`);
+        }
 
         resolve(Promise.all(pdfFiles.map(toAbsolutePath).map(runTest)))
       })

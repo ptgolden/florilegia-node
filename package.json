@@ -18,7 +18,8 @@
   "gypfile": true,
   "devDependencies": {
     "blue-tape": "^1.0.0",
-    "concat-stream": "^1.6.0"
+    "concat-stream": "^1.6.0",
+    "node-png": "^0.4.3"
   },
   "dependencies": {
     "JSONStream": "^1.3.1",
