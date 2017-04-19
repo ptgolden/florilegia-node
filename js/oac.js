@@ -105,21 +105,21 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
     )
   }
 
-  if (motivation === 'bookmarking' && annotation.stamp_body) {
+  if (motivation === 'bookmarking' && annotation.stamp_bytes) {
     const $imageURI = $(`${baseURI}image-${Object.keys(images).length}`)
 
     triples = triples.concat(
       $imageURI({
         'dce:format': createLiteral('image/png'),
         'rdf:type': ['dctype:Image', 'cnt:ContentAsBase64'],
-        'cnt:bytes': createLiteral(annotation.stamp_body),
+        'cnt:bytes': createLiteral(annotation.stamp_bytes),
       })
     )
 
-    images[annotation.stamp_body] = $imageURI;
+    images[annotation.stamp_bytes] = $imageURI;
 
     triples = triples.concat(
-      $annot('oa:hasBody')(images[annotation.stamp_body])
+      $annot('oa:hasBody')(images[annotation.stamp_bytes])
     )
   }
   return triples

@@ -9,6 +9,7 @@
 
 #define JSON_NOEXCEPTION 1
 #include "json.hpp"
+#include "base64.h"
 
 #define MULTITHREADED 1
 
@@ -32,8 +33,11 @@ using json = nlohmann::json;
 struct annotation_t {
 	int page;
 	int object_id;
+
 	const char* motivation;
 	const char* stamp_label;
+	std::string stamp_bytes;
+
 	std::string body_text;
 	std::string highlighted_text;
 };
@@ -97,13 +101,15 @@ void printRectange(PDFRectangle *rect) {
 	printf("(%f,%f) , (%f,%f)\n", rect->x1, rect->y1, rect->x2, rect->y2);
 }
 
-void writeStampToFile(Annot *annot, const char* objectID) {
+std::string annotToPNG(Annot *annot, const char* objectID) {
+	FILE *fp;
 	Gfx *gfx;
 	SplashColor color;
 	SplashOutputDev *splashOut;
 	PDFDoc *doc;
 	Page *page;
 	int pageNum;
+	std::string rawPNG;
 
 	doc = annot->getDoc();
 	pageNum = annot->getPageNum();
@@ -140,19 +146,35 @@ void writeStampToFile(Annot *annot, const char* objectID) {
 
 	SplashBitmap *bitmap = splashOut->getBitmap();
 
-	std::string f;
-	f += "/tmp/png/thing-";
-	f += objectID;
-	f += ".png";
+	fp = std::tmpfile();
 
-	printf("Printed to %s\n\n", f.c_str());
+	bitmap->writeImgFile(splashFormatPng, fp, 72 * m, 72 * m);
 
 
-	bitmap->writeImgFile(splashFormatPng, (char *)f.c_str(), 72, 72);
+	fseek(fp, 0, SEEK_END);
+	long fsize = ftell(fp);
+	char *png = (char *) malloc(fsize + 1);
 
-	doc->replacePageDict(pageNum, 0, mediaBox, origCropBox);
+	if (!png) {
+		printf("Could not allocate memory\n");
+		exit(-1);
+	}
 
+	std::rewind(fp);
+
+	size_t res = fread(png, fsize, 1, fp);
+	if (res != 1) {
+		printf("Error reading PNG to buffer\n");
+		exit(-1);
+	}
+	fclose(fp);
+
+	rawPNG.append(png, fsize);
+
+	free(png);
 	delete splashOut;
+
+	return rawPNG;
 }
 
 
@@ -212,6 +234,11 @@ std::string annotationToJSON(annotation_t *annot) {
 		out["stamp_label"] = annot->stamp_label;
 	}
 
+	if (annot->stamp_bytes.length() > 0) {
+		out["stamp_bytes"] = annot->stamp_bytes;
+	}
+
+
 	return out.dump();
 }
 
@@ -231,7 +258,7 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 
 			annotation_t a = {
 				page_number, annot->getId(), "commenting",
-				NULL,
+				NULL, "",
 				body_text, ""
 			};
 
@@ -242,13 +269,16 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 		case Annot::typeStamp: {
 			AnnotStamp *stamp = static_cast<AnnotStamp *>(annot);
 
+			std::string bytes = annotToPNG(annot, std::to_string(stamp->getId()).c_str());
+			std::string b64;
+
+			Base64::Encode(bytes, &b64);
 
 			annotation_t a = {
 				page_number, annot->getId(), "bookmarking",
-				stamp->getSubject()->getCString(), "", ""
+				stamp->getSubject()->getCString(), b64,
+				"", ""
 			};
-
-			writeStampToFile(annot, std::to_string(stamp->getId()).c_str());
 
 			processed_annots.push_back(a);
 			break;
@@ -260,7 +290,7 @@ std::list<annotation_t> process_page(UnicodeMap *u_map, PDFDoc* doc, int page_nu
 
 			annotation_t a = {
 					page_number, annot->getId(), "highlighting",
-					NULL, "", getTextForMarkupAnnot(u_map, annot)
+					NULL, "", "", getTextForMarkupAnnot(u_map, annot)
 			};
 			processed_annots.push_back(a);
 			break;
@@ -317,14 +347,12 @@ class AnnotationWorker : public StreamingWorker {
 
 			std::list<annotation_t> page_annots = process_page(uMap, doc, i, imageDirectory);
 
-			/*
 			for (annotation_t annot : page_annots) {
 				if (this->closed()) break;
 				std::string annotJSON = annotationToJSON(&annot);
 				Message tosend("annotation", annotJSON);
 				writeToNode(progress, tosend);
 			}
-			*/
 		}
 
 		close();
