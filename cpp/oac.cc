@@ -1,6 +1,10 @@
 #include <stdio.h>
+#include <math.h>
 #include <string>
 #include <list>
+
+#include <fstream>
+#include <iostream>
 
 #include <glib.h>
 #include <glib/poppler.h>
@@ -171,21 +175,28 @@ oac_annot_set_body_text(OacAnnot *oac_annot, PopplerAnnot *annot) {
 }
 
 void
-oac_annot_set_body_image(OacAnnot *oac_annot, PopplerAnnot *annot, PopplerPage *page) {
+oac_annot_set_body_image(OacAnnot *oac_annot, PopplerAnnot *annot, PopplerRectangle *rect, PopplerPage *page) {
 	string png_base64;
 	string png_raw;
+	double annot_width, annot_height, page_width, page_height;
 	cairo_t *cairo;
 	cairo_surface_t *surface;
 
 	if (oac_annot->action != ANNOTATION_ACTION_STAMPING)
 		return;
 
-	surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1000, 1000);
+	poppler_page_get_size(page, &page_width, &page_height);
+
+	annot_width = rect->x2 - rect->x1;
+	annot_height = rect->y2 - rect->y1;
+	surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, annot_width, annot_height);
 
 	cairo = cairo_create(surface);
-	cairo_save(cairo);
 
+	cairo_translate(cairo, -(rect->x1 / 2), (rect->y2 - page_height) / 2);
 	poppler_page_render_annot(page, annot, cairo);
+
+	cairo_save(cairo);
 
 	cairo_destroy(cairo);
 	cairo_surface_flush(surface);
@@ -196,6 +207,8 @@ oac_annot_set_body_image(OacAnnot *oac_annot, PopplerAnnot *annot, PopplerPage *
 
 	cairo_surface_finish(surface);
 	cairo_surface_destroy(surface);
+
+	return;
 }
 
 void
@@ -242,7 +255,7 @@ oac_annot_from_mapping(OacAnnot *oac_annot, PopplerAnnotMapping *m, PopplerPage 
 		return;
 
 	oac_annot_set_body_text(oac_annot, m->annot);
-	oac_annot_set_body_image(oac_annot, m->annot, p);
+	oac_annot_set_body_image(oac_annot, m->annot, &(m->area), p);
 	oac_annot_set_target_text(oac_annot, m->annot, p);
 
 	return;
