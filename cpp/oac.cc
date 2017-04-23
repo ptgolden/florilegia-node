@@ -37,6 +37,19 @@ struct OacAnnot {
 	string target_text;
 };
 
+struct png_stream_closure_t {
+	string bytes;
+};
+
+cairo_status_t
+write_png_stream_to_string(void *in_closure, const unsigned char *data, unsigned int length) {
+	png_stream_closure_t *closure = (png_stream_closure_t *)in_closure;
+
+	closure->bytes.append(data, data + length);
+
+	return CAIRO_STATUS_SUCCESS;
+}
+
 string
 annotation_action_get_motivation(AnnotationAction action) {
 	switch(action) {
@@ -127,27 +140,15 @@ oac_annot_set_body_image(OacAnnot *oac_annot, PopplerPage *page, PopplerAnnot *a
 
 	cairo_surface_flush(surface);
 
-	string filename;
-
-	filename += "/tmp/png/annot-";
-	filename += std::to_string(i);
-	filename += ".png";
-
-	// FIXME: Check status of (everything)
-
-	status = cairo_surface_write_to_png(surface, filename.c_str());
-	i += 1;
+	png_stream_closure_t closure;
+	status = cairo_surface_write_to_png_stream(surface, write_png_stream_to_string, &closure);
 
 	if (status != CAIRO_STATUS_SUCCESS) {
 		fprintf(stderr, "%s\n", cairo_status_to_string(status));
 		return;
 	}
 
-
-
-	/*
-	Base64::Encode(raw_png_from_cairo_surface(surface), &oac_annot->body_image);
-	*/
+	Base64::Encode(closure.bytes, &oac_annot->body_image);
 
 	cairo_surface_finish(surface);
 	cairo_surface_destroy(surface);
