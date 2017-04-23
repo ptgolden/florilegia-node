@@ -8,9 +8,6 @@
 
 #include <glib.h>
 #include <glib/poppler.h>
-#include <goo/gmem.h>
-#include <goo/ImgWriter.h>
-#include <goo/PNGWriter.h>
 #include <cairo.h>
 
 #include "base64.h"
@@ -22,6 +19,7 @@ using nlohmann::json;
 
 using std::string;
 using std::list;
+using std::rewind;
 
 enum AnnotationAction {
 	ANNOTATION_ACTION_UNSUPPORTED,
@@ -34,85 +32,10 @@ enum AnnotationAction {
 struct OacAnnot {
 	int page;
 	AnnotationAction action;
-
 	string body_text;
 	string body_image;
 	string target_text;
 };
-
-uint32_t
-apply_alpha(uint32_t level, uint32_t alpha) {
-	return (level * 255 + alpha / 2) / alpha;
-}
-
-string
-raw_png_from_cairo_surface(cairo_surface_t *surface) {
-	string raw_png;
-	char *raw_png_c;
-	int width, height, stride;
-	unsigned char *data;
-	FILE *fp;
-	long fsize;
-	ImgWriter *writer;
-
-	width = cairo_image_surface_get_width(surface);
-	height = cairo_image_surface_get_height(surface);
-	stride = cairo_image_surface_get_stride(surface);
-	cairo_surface_flush(surface);
-	data = cairo_image_surface_get_data(surface);
-
-
-	writer = new PNGWriter(PNGWriter::RGBA);
-	fp = tmpfile();
-	if (!writer->init(fp, width, height, 72.0, 72.0)) {
-		fprintf(stderr, "Error writing file");
-		exit(-1);
-	}
-
-	unsigned char *row = (unsigned char *)gmallocn(width, 4);
-	for (int y = 0; y < height; y++) {
-		uint32_t *pixel = (uint32_t *)(data + y * stride);
-		unsigned char *rowp = row;
-		for (int x = 0; x < width; x++, pixel++) {
-			uint8_t r, g, b, a;
-
-			a = ((*pixel & 0xff000000) >> 24);
-
-			if (a == 0) {
-				r = g = b = 0;
-			} else {
-				r = apply_alpha(((*pixel & 0xff0000) >> 16), a);
-				g = apply_alpha(((*pixel & 0x00ff00) >> 8), a);
-				b = apply_alpha(((*pixel & 0x0000ff) >> 0), a);
-			}
-
-			*rowp++ = r;
-			*rowp++ = g;
-			*rowp++ = b;
-			*rowp++ = a;
-		}
-
-		writer->writeRow(&row);
-	}
-	gfree(row);
-	writer->close();
-	fflush(fp);
-	fseek(fp, 0, SEEK_END);
-	fsize = ftell(fp);
-	std::rewind(fp);
-	raw_png_c = (char *)malloc(fsize + 1);
-
-	if (fread(raw_png_c, fsize, 1, fp) != 1) {
-		fprintf(stderr, "Error reading stamp PNG to buffer\n");
-		exit(-1);
-	}
-	fclose(fp);
-
-	raw_png.assign(raw_png_c, fsize);
-	free(raw_png_c);
-
-	return raw_png;
-}
 
 string
 annotation_action_get_motivation(AnnotationAction action) {
@@ -171,24 +94,62 @@ oac_annot_set_body_text(OacAnnot *oac_annot, PopplerAnnot *annot) {
 	g_free(annot_contents);
 
 	oac_annot->body_text = body_text;
+
 	return;
 }
 
+int i = 0;
+
 void
-oac_annot_set_body_image(OacAnnot *oac_annot, PopplerAnnot *annot, PopplerPage *page) {
-	string png_base64;
-	string png_raw;
+oac_annot_set_body_image(OacAnnot *oac_annot, PopplerPage *page, PopplerAnnot *annot, PopplerRectangle *rect) {
+	cairo_t *cairo;
 	cairo_surface_t *surface;
+	cairo_status_t status;
+	double scale, page_height;
 
 	if (oac_annot->action != ANNOTATION_ACTION_STAMPING)
 		return;
 
-	surface = poppler_page_render_annot(page, annot);
+	scale = 4.17;
 
-	png_raw = raw_png_from_cairo_surface(surface);
-	Base64::Encode(png_raw, &png_base64);
-	oac_annot->body_image = png_base64;
+	surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
+					     (rect->x2 - rect->x1) * scale,
+					     (rect->y2 - rect->y1) * scale);
 
+	cairo = cairo_create(surface);
+	cairo_scale(cairo, scale, scale);
+	poppler_page_get_size(page, NULL, &page_height);
+	cairo_translate(cairo, (-rect->x1) / 2, (rect->y2 - page_height) / 2);
+
+	poppler_page_render_annot(page, annot, cairo);
+
+	cairo_destroy(cairo);
+
+	cairo_surface_flush(surface);
+
+	string filename;
+
+	filename += "/tmp/png/annot-";
+	filename += std::to_string(i);
+	filename += ".png";
+
+	// FIXME: Check status of (everything)
+
+	status = cairo_surface_write_to_png(surface, filename.c_str());
+	i += 1;
+
+	if (status != CAIRO_STATUS_SUCCESS) {
+		fprintf(stderr, "%s\n", cairo_status_to_string(status));
+		return;
+	}
+
+
+
+	/*
+	Base64::Encode(raw_png_from_cairo_surface(surface), &oac_annot->body_image);
+	*/
+
+	cairo_surface_finish(surface);
 	cairo_surface_destroy(surface);
 
 	return;
@@ -196,17 +157,20 @@ oac_annot_set_body_image(OacAnnot *oac_annot, PopplerAnnot *annot, PopplerPage *
 
 void
 oac_annot_set_target_text(OacAnnot *oac_annot, PopplerAnnot *annot, PopplerPage *page) {
-	string highlighted_text;
-	char *annot_text;
 
 	if (oac_annot->action != ANNOTATION_ACTION_HIGHLIGHTING)
 		return;
 
+	/*
+	string highlighted_text;
+	char *annot_text;
 	annot_text = poppler_page_get_text_for_annot(page, annot);
 
 	highlighted_text += annot_text;
 
 	oac_annot->target_text = highlighted_text;
+	*/
+
 	return;
 }
 
@@ -238,7 +202,7 @@ oac_annot_from_mapping(OacAnnot *oac_annot, PopplerAnnotMapping *m, PopplerPage 
 		return;
 
 	oac_annot_set_body_text(oac_annot, m->annot);
-	oac_annot_set_body_image(oac_annot, m->annot, p);
+	oac_annot_set_body_image(oac_annot, p, m->annot, &m->area);
 	oac_annot_set_target_text(oac_annot, m->annot, p);
 
 	return;
