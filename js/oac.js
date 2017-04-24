@@ -49,7 +49,7 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
 
   let triples = []
 
-  const { page, motivation, body_text, highlighted_text } = annotation
+  const { page, motivation, body_text, target_text } = annotation
       , makeAnnotURI = p => $(mintAnnotURI(p, i, annotation, opts))
 
   const $annot = makeAnnotURI()
@@ -77,7 +77,7 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
   )
 
   // Text selector
-  if (highlighted_text) {
+  if (target_text) {
     const $textSelector = makeAnnotURI('text-selector')
 
     triples = triples.concat(
@@ -85,7 +85,7 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
 
       $textSelector({
         'rdf:type': 'oa:TextQuoteSelector',
-        'oa:exact': createLiteral(highlighted_text),
+        'oa:exact': createLiteral(target_text),
       })
     )
   }

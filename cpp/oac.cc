@@ -111,8 +111,6 @@ oac_annot_set_body_text(OacAnnot *oac_annot, PopplerAnnot *annot) {
 	return;
 }
 
-int i = 0;
-
 void
 oac_annot_set_body_image(OacAnnot *oac_annot, PopplerPage *page, PopplerAnnot *annot, PopplerRectangle *rect) {
 	cairo_t *cairo;
@@ -158,19 +156,44 @@ oac_annot_set_body_image(OacAnnot *oac_annot, PopplerPage *page, PopplerAnnot *a
 
 void
 oac_annot_set_target_text(OacAnnot *oac_annot, PopplerAnnot *annot, PopplerPage *page) {
+	std::string text;
+	char *rect_text;
+	GArray *quads;
+	PopplerQuadrilateral quad;
+	PopplerRectangle rect;
+	double page_height, y1, y2;
 
 	if (oac_annot->action != ANNOTATION_ACTION_HIGHLIGHTING)
 		return;
 
-	/*
-	string highlighted_text;
-	char *annot_text;
-	annot_text = poppler_page_get_text_for_annot(page, annot);
+	poppler_page_get_size(page, NULL, &page_height);
+	quads = poppler_annot_text_markup_get_quadrilaterals(POPPLER_ANNOT_TEXT_MARKUP(annot));
 
-	highlighted_text += annot_text;
+	for (unsigned int i = 0; i < quads->len; i++) {
+		quad = g_array_index(quads, PopplerQuadrilateral, i);
 
-	oac_annot->target_text = highlighted_text;
-	*/
+		y1 = page_height - quad.p1.y;
+		y2 = page_height - quad.p3.y;
+
+		// Make the rectangle to through the middle of the rectangle so
+		// that it doesn't need to be exactly right. Using the whole
+		// rectangle kept overlapping with lines above/below
+		rect.x1 = quad.p1.x;
+		rect.y1 = (y2 + y1) / 2 - 1;
+		rect.x2 = quad.p2.x;
+		rect.y2 = (y2 + y1) / 2 + 1;
+
+		rect_text = poppler_page_get_text_for_area(page, &rect);
+
+		if (text.length() > 0)
+			text += " ";
+
+		text += rect_text;
+	}
+
+	oac_annot->target_text = text;
+
+	g_array_free(quads, TRUE);
 
 	return;
 }
@@ -212,7 +235,6 @@ oac_annot_from_mapping(OacAnnot *oac_annot, PopplerAnnotMapping *m, PopplerPage 
 list<OacAnnot>
 poppler_document_get_oac_annots(PopplerDocument *doc, int page_number) {
 	list<OacAnnot> oac_annots;
-	OacAnnot oac_annot;
 	PopplerPage *page;
 	GList *annots, *l;
 	PopplerAnnotMapping *m;
@@ -222,6 +244,7 @@ poppler_document_get_oac_annots(PopplerDocument *doc, int page_number) {
 	annots = poppler_page_get_annot_mapping(page);
 
 	for (l = annots; l != NULL; l = l->next) {
+		OacAnnot oac_annot;
 		m = (PopplerAnnotMapping *) l->data;
 		oac_annot_from_mapping(&oac_annot, m, page);
 
