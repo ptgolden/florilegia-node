@@ -27,7 +27,7 @@
 			"cflags": [
 				"-Wall",
 				"-std=c++11",
-				"<!@(pkg-config --cflags-only-other poppler-glib)"
+				"<!@(pkg-config -pthread)"
 			]
 		}
   ]
