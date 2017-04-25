@@ -8,7 +8,7 @@
 			],
 			"libraries": [
 				"-lpoppler-glib",
-				"-Wl,-rpath=<!(pwd)/libpoppler/lib/"
+				"-Wl,-rpath='$$ORIGIN'/../../libpoppler/lib/"
 			],
 			"include_dirs": [
 				"<!(pwd)/libpoppler/include/poppler",
