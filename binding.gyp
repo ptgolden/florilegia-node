@@ -26,8 +26,7 @@
 			],
 			"cflags": [
 				"-Wall",
-				"-std=c++11",
-				"<!@(pkg-config -pthread)"
+				"-pthread"
 			]
 		}
   ]
