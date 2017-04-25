@@ -1,4 +1,6 @@
+sudo: false
 language: node_js
+dist: trusty
 
 os:
         - linux
@@ -7,7 +9,6 @@ os:
 node_js:
         - "7"
 
-sudo: false
 
 compiler: clang
 
@@ -17,9 +18,7 @@ addons:
                         - libglib2.0-dev
                         - libcairo2-dev
                         - libpng-dev
-                        - g++-5
 
 before_install:
         - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
         - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install glib cairo libpng; fi
-        - if [[ "$CXX" == "g++" ]]; then export CXX="g++-5"; fi
