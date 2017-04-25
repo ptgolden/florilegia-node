@@ -15,5 +15,5 @@ addons:
                         - libpng-dev
 
 before_install:
-        - if [[ $TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
-        - if [[ $TRAVIS_OS_NAME" == "osx" ]]; then brew install glib cairo libpng; fi
+        - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+        - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install glib cairo libpng; fi
