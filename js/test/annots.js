@@ -59,11 +59,11 @@ const cases = [
     transform: annots => {
       const parser = new PNG()
 
-      if (!annots[0].stamp_bytes) {
+      if (!annots[0].stamp_body) {
         throw new Error('Stamp was not extracted.');
       }
 
-      const rawPNG = Buffer.from(annots[0].stamp_bytes, 'base64')
+      const rawPNG = Buffer.from(annots[0].stamp_body, 'base64')
 
       return new Promise((resolve, reject) =>
         parser.parse(rawPNG, (err, data) => {
@@ -80,9 +80,22 @@ const cases = [
   }
 ]
 
-function deleteObjectID(annot) {
-  delete annot.object_id;
-  return annot;
+function withoutDifferingFields(annot) {
+  const obj = {}
+
+  const differingFields = [
+    'body_color',
+    'body_subject',
+    'target_rect'
+  ]
+
+  for (let field in annot) {
+    if (differingFields.indexOf(field) === -1) {
+      obj[field] = annot[field]
+    }
+  }
+
+  return obj;
 }
 
 test('Extracting annotations from PDFS', t => Promise.all(
@@ -101,7 +114,7 @@ test('Extracting annotations from PDFS', t => Promise.all(
 
           const cmp = await (transform
             ? transform(annots)
-            : annots.map(deleteObjectID))
+            : annots.map(withoutDifferingFields))
 
           return t.deepEqual(cmp, expected, `${msg} (${getPdfCreator(filename)}).`);
         }
