@@ -36,7 +36,7 @@ const cases = [
       {
           page: 1,
           motivation: 'highlighting',
-          highlighted_text: 'document',
+          target_text: 'document',
       }
     ],
     msg: 'should extract highlight annotations'
@@ -48,7 +48,7 @@ const cases = [
       {
           page: 1,
           motivation: 'highlighting',
-          highlighted_text: 'that spans',
+          target_text: 'that spans',
       }
     ],
     msg: 'should extract multiline highlight annotations'

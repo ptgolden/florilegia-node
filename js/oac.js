@@ -49,7 +49,7 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
 
   let triples = []
 
-  const { page, motivation, body_text, highlighted_text } = annotation
+  const { page, motivation, body_text, target_text } = annotation
       , makeAnnotURI = p => $(mintAnnotURI(p, i, annotation, opts))
 
   const $annot = makeAnnotURI()
@@ -71,13 +71,13 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
 
     $pdfSelector({
       'rdf:type': 'oa:FragmentSelector',
-      'rdf:value': createLiteral(`#page=${page}`),
+      'rdf:value': createLiteral(`#page=${page}&highlight=${annotation.target_rect}`),
       'oa:conformsTo': 'http://tools.ietf.org/rfc/rfc3778',
     })
   )
 
   // Text selector
-  if (highlighted_text) {
+  if (target_text) {
     const $textSelector = makeAnnotURI('text-selector')
 
     triples = triples.concat(
@@ -85,7 +85,7 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
 
       $textSelector({
         'rdf:type': 'oa:TextQuoteSelector',
-        'oa:exact': createLiteral(highlighted_text),
+        'oa:exact': createLiteral(target_text),
       })
     )
   }
@@ -98,7 +98,7 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
       $annot('oa:hasBody')($commentBody),
 
       $commentBody({
-        'dce:format': createLiteral('text/plain'),
+        'dc:format': createLiteral('text/plain'),
         'rdf:type': ['dctype:Text', 'cnt:ContentAsText'],
         'cnt:chars': createLiteral(body_text),
       })
@@ -110,7 +110,8 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
 
     triples = triples.concat(
       $imageURI({
-        'dce:format': createLiteral('image/png'),
+        'dc:subject': createLiteral(annotation.body_subject),
+        'dc:format': createLiteral('image/png'),
         'rdf:type': ['dctype:Image', 'cnt:ContentAsBase64'],
         'cnt:bytes': createLiteral(annotation.stamp_bytes),
       })

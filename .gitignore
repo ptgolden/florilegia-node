@@ -1,5 +1,8 @@
 *.swp
 build
 node_modules
+libpoppler/*
+!libpoppler/Makefile
+!libpoppler/patches/
 .cproject
 .project

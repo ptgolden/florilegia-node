@@ -1,0 +1,84 @@
+From 088d872b7734210fd31f36862c215ba152996cc4 Mon Sep 17 00:00:00 2001
+From: Patrick Golden <ptgolden0@gmail.com>
+Date: Sat, 22 Apr 2017 13:57:09 -0400
+Subject: [PATCH 1/2] Add poppler_annot_render
+
+This is a local version comparable to this proposed patch:
+
+https://bugs.freedesktop.org/show_bug.cgi?id=83643
+---
+ glib/poppler-page.cc | 43 +++++++++++++++++++++++++++++++++++++++++++
+ glib/poppler-page.h  |  3 +++
+ 2 files changed, 46 insertions(+)
+
+diff --git a/glib/poppler-page.cc b/glib/poppler-page.cc
+index 3d63bfd..4c640e3 100644
+--- a/glib/poppler-page.cc
++++ b/glib/poppler-page.cc
+@@ -423,6 +423,49 @@ poppler_page_render_for_printing (PopplerPage *page,
+   _poppler_page_render (page, cairo, gTrue, POPPLER_PRINT_ALL);
+ }
+ 
++/**
++ * poppler_annot_render:
++ * @poppler_page: a #PopplerPage
++ * @poppler_annot: a #PopplerAnnot on @poppler_page
++ * @cairo: cairo context to render to
++ *
++ * Render a single annotation to a cairo context
++ */
++void
++poppler_page_render_annot(PopplerPage  *poppler_page,
++			  PopplerAnnot *poppler_annot,
++			  cairo_t      *cairo)
++{
++  double x1, y1, x2, y2;
++  CairoOutputDev *output_dev;
++  Gfx *gfx;
++
++  g_return_if_fail (POPPLER_IS_PAGE (poppler_page));
++  g_return_if_fail (POPPLER_IS_ANNOT (poppler_annot));
++  g_return_if_fail (poppler_page_get_index(poppler_page) == poppler_annot_get_page_index(poppler_annot));
++
++  output_dev = poppler_page->document->output_dev;
++  output_dev->setCairo (cairo);
++
++  cairo_clip_extents (cairo, &x1, &y1, &x2, &y2);
++  cairo_save (cairo);
++
++  gfx = poppler_page->page->createGfx (output_dev,
++				       72.0, 72.0, 0,
++				       gFalse, /* useMediaBox */
++				       gTrue, /* crop */
++				       x1, y1,
++				       x2, y2,
++				       gFalse,
++				       NULL, NULL);
++
++  poppler_annot->annot->draw (gfx, gFalse);
++  cairo_restore (cairo);
++
++  output_dev->setCairo (NULL);
++  delete gfx;
++}
++
+ static cairo_surface_t *
+ create_surface_from_thumbnail_data (guchar *data,
+ 				    gint    width,
+diff --git a/glib/poppler-page.h b/glib/poppler-page.h
+index fdbfd38..63caa58 100644
+--- a/glib/poppler-page.h
++++ b/glib/poppler-page.h
+@@ -41,6 +41,9 @@ void                   poppler_page_render_for_printing  (PopplerPage        *pa
+ void       poppler_page_render_for_printing_with_options (PopplerPage        *page,
+                                                           cairo_t            *cairo,
+                                                           PopplerPrintFlags   options);
++void                   poppler_page_render_annot         (PopplerPage        *poppler_page,
++			                                  PopplerAnnot       *poppler_annot,
++							  cairo_t            *cairo);
+ cairo_surface_t       *poppler_page_get_thumbnail        (PopplerPage        *page);
+ void                   poppler_page_render_selection     (PopplerPage        *page,
+ 							  cairo_t            *cairo,
+-- 
+2.9.3
+
