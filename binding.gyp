@@ -8,9 +8,10 @@
 			],
 			"libraries": [
 				"-lpoppler-glib",
+				"-Wl,-rpath=<!(pwd)/libpoppler/lib/"
 			],
 			"include_dirs": [
-				"/home/patrick/Code/repos/poppler",
+				"<!(pwd)/libpoppler/include/poppler",
 				"<!(node -e \"require('nan')\")",
 				"<!(node -e \"require('streaming-worker-sdk')\")",
 				"<!@(pkg-config poppler-glib --cflags-only-I | sed s/-I//g)",

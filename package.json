@@ -5,7 +5,8 @@
   "main": "js/index.js",
   "scripts": {
     "test": "tape js/test/*.js",
-    "install": "node-gyp rebuild"
+    "install": "cd libpoppler && make && cd ../ && node-gyp rebuild",
+    "clean": "cd libpoppler && make clean && cd ../ && node-gyp clean"
   },
   "repository": {
     "type": "git",
