@@ -7,9 +7,15 @@ Requires libpoppler and a C compiler that supports C++11.
 
 # Installation
 
-```
-npm install pdf2oac
-```
+pdf2oac requires running a patched version of libpoppler that is built from source. The patches allow handling stamp annotations and rendering annotations to images. They can be found in the `libpoppler/patches` directory.
+
+To patch and build the patched libpoppler, and then build the Node extension, all you need to do is run `npm install`. However, for this to run successfully will require several dependencies to be installed through your OS's package manager:
+
+  * libcairo
+  * libglib2.0
+  * libpixman
+  * libfreetype2
+  * libpng
 
 # Node.js library
 
