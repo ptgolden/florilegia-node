@@ -1,0 +1,139 @@
+From eb1a633c3a6caa6ba97ddbc49aeb0721365af8c9 Mon Sep 17 00:00:00 2001
+From: Patrick Golden <ptgolden0@gmail.com>
+Date: Tue, 25 Apr 2017 09:48:45 -0400
+Subject: [PATCH 2/2] Make PopplerAnnotStamp a type of markup annotation
+
+---
+ glib/poppler-annot.cc  | 28 ++++++++++++++++++++++++++++
+ glib/poppler-annot.h   |  7 +++++++
+ glib/poppler-page.cc   |  3 +++
+ glib/poppler-private.h |  1 +
+ glib/poppler.h         |  1 +
+ 5 files changed, 40 insertions(+)
+
+diff --git a/glib/poppler-annot.cc b/glib/poppler-annot.cc
+index 312aa31..255254d 100644
+--- a/glib/poppler-annot.cc
++++ b/glib/poppler-annot.cc
+@@ -40,6 +40,7 @@ typedef struct _PopplerAnnotScreenClass         PopplerAnnotScreenClass;
+ typedef struct _PopplerAnnotLineClass           PopplerAnnotLineClass;
+ typedef struct _PopplerAnnotCircleClass         PopplerAnnotCircleClass;
+ typedef struct _PopplerAnnotSquareClass         PopplerAnnotSquareClass;
++typedef struct _PopplerAnnotStampClass          PopplerAnnotStampClass;
+ 
+ struct _PopplerAnnotClass
+ {
+@@ -150,6 +151,16 @@ struct _PopplerAnnotSquareClass
+   PopplerAnnotMarkupClass parent_class;
+ };
+ 
++struct _PopplerAnnotStamp
++{
++  PopplerAnnotMarkup parent_instance;
++};
++
++struct _PopplerAnnotStampClass
++{
++  PopplerAnnotMarkupClass parent_class;
++};
++
+ G_DEFINE_TYPE (PopplerAnnot, poppler_annot, G_TYPE_OBJECT)
+ G_DEFINE_TYPE (PopplerAnnotMarkup, poppler_annot_markup, POPPLER_TYPE_ANNOT)
+ G_DEFINE_TYPE (PopplerAnnotTextMarkup, poppler_annot_text_markup, POPPLER_TYPE_ANNOT_MARKUP)
+@@ -161,6 +172,7 @@ G_DEFINE_TYPE (PopplerAnnotScreen, poppler_annot_screen, POPPLER_TYPE_ANNOT)
+ G_DEFINE_TYPE (PopplerAnnotLine, poppler_annot_line, POPPLER_TYPE_ANNOT_MARKUP)
+ G_DEFINE_TYPE (PopplerAnnotCircle, poppler_annot_circle, POPPLER_TYPE_ANNOT_MARKUP)
+ G_DEFINE_TYPE (PopplerAnnotSquare, poppler_annot_square, POPPLER_TYPE_ANNOT_MARKUP)
++G_DEFINE_TYPE (PopplerAnnotStamp, poppler_annot_stamp, POPPLER_TYPE_ANNOT_MARKUP)
+ 
+ static PopplerAnnot *
+ _poppler_create_annot (GType annot_type, Annot *annot)
+@@ -708,6 +720,22 @@ poppler_annot_square_new (PopplerDocument  *doc,
+   return _poppler_annot_square_new (annot);
+ }
+ 
++PopplerAnnot *
++_poppler_annot_stamp_new (Annot *annot)
++{
++  return _poppler_create_annot (POPPLER_TYPE_ANNOT_STAMP, annot);
++}
++
++static void
++poppler_annot_stamp_init (PopplerAnnotStamp *poppler_annot)
++{
++}
++
++static void
++poppler_annot_stamp_class_init (PopplerAnnotStampClass *klass)
++{
++}
++
+ /* Public methods */
+ /**
+  * poppler_annot_get_annot_type:
+diff --git a/glib/poppler-annot.h b/glib/poppler-annot.h
+index 44ab5e3..ded5ac4 100644
+--- a/glib/poppler-annot.h
++++ b/glib/poppler-annot.h
+@@ -73,6 +73,10 @@ G_BEGIN_DECLS
+ #define POPPLER_ANNOT_SQUARE(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), POPPLER_TYPE_ANNOT_SQUARE, PopplerAnnotSquare))
+ #define POPPLER_IS_ANNOT_SQUARE(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), POPPLER_TYPE_ANNOT_SQUARE))
+ 
++#define POPPLER_TYPE_ANNOT_STAMP             (poppler_annot_stamp_get_type ())
++#define POPPLER_ANNOT_STAMP(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), POPPLER_TYPE_ANNOT_STAMP, PopplerAnnotStamp))
++#define POPPLER_IS_ANNOT_STAMP(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), POPPLER_TYPE_ANNOT_STAMP))
++
+ typedef enum
+ {
+   POPPLER_ANNOT_UNKNOWN,
+@@ -293,6 +297,9 @@ void                          poppler_annot_square_set_interior_color          (
+ 										PopplerColor       *poppler_color);
+ PopplerColor                 *poppler_annot_square_get_interior_color          (PopplerAnnotSquare *poppler_annot);
+ 
++/* PopplerAnnotStamp */
++GType                         poppler_annot_stamp_get_type                    (void) G_GNUC_CONST;
++
+ G_END_DECLS
+ 
+ #endif /* __POPPLER_ANNOT_H__ */
+diff --git a/glib/poppler-page.cc b/glib/poppler-page.cc
+index 4c640e3..ac0a966 100644
+--- a/glib/poppler-page.cc
++++ b/glib/poppler-page.cc
+@@ -1454,6 +1454,9 @@ poppler_page_get_annot_mapping (PopplerPage *page)
+       case Annot::typeCircle:
+         mapping->annot = _poppler_annot_circle_new (annot);
+ 	break;
++      case Annot::typeStamp:
++        mapping->annot = _poppler_annot_stamp_new (annot);
++	break;
+       case Annot::typeHighlight:
+       case Annot::typeUnderline:
+       case Annot::typeSquiggly:
+diff --git a/glib/poppler-private.h b/glib/poppler-private.h
+index 9abdd7c..01cf846 100644
+--- a/glib/poppler-private.h
++++ b/glib/poppler-private.h
+@@ -134,6 +134,7 @@ PopplerAnnot      *_poppler_annot_screen_new (PopplerDocument *doc, Annot *annot
+ PopplerAnnot      *_poppler_annot_line_new (Annot *annot);
+ PopplerAnnot      *_poppler_annot_circle_new (Annot *annot);
+ PopplerAnnot      *_poppler_annot_square_new (Annot *annot);
++PopplerAnnot      *_poppler_annot_stamp_new (Annot *annot);
+ 
+ char *_poppler_goo_string_to_utf8(GooString *s);
+ gboolean _poppler_convert_pdf_date_to_gtime (GooString *date,
+diff --git a/glib/poppler.h b/glib/poppler.h
+index 1e78050..6355804 100644
+--- a/glib/poppler.h
++++ b/glib/poppler.h
+@@ -200,6 +200,7 @@ typedef struct _PopplerAnnotCalloutLine    PopplerAnnotCalloutLine;
+ typedef struct _PopplerAnnotLine           PopplerAnnotLine;
+ typedef struct _PopplerAnnotCircle         PopplerAnnotCircle;
+ typedef struct _PopplerAnnotSquare         PopplerAnnotSquare;
++typedef struct _PopplerAnnotStamp          PopplerAnnotStamp;
+ typedef struct _PopplerQuadrilateral       PopplerQuadrilateral;
+ typedef struct _PopplerStructureElement    PopplerStructureElement;
+ typedef struct _PopplerStructureElementIter PopplerStructureElementIter;
+-- 
+2.9.3
+
