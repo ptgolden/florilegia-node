@@ -30,8 +30,14 @@ const argv = require('yargs')
 	.argv
 
 argv._.map(p => path.resolve(p)).forEach(pdfFilename => {
+  let pdfURI = argv['pdf-uri']
+
+  if (!pdfURI) {
+    pdfURI = 'file://' + pdfFilename.split(path.sep).map(encodeURIComponent).join(path.sep);
+  }
+
   const tripleStream = pdf2oac(pdfFilename, {
-    pdfURI: argv['pdf-uri'] || 'file://' + pdfFilename,
+    pdfURI,
     baseURI: argv['base-uri'],
     graphURI: argv['graph-uri']
   })
