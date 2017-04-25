@@ -14,11 +14,15 @@ enum AnnotationAction {
 };
 
 struct OacAnnot {
-	int page;
 	AnnotationAction action;
 
 	string body_text;
 	string body_image;
+	string body_subject;
+	string body_color;
+
+	int page;
+	string target_rect;
 	string target_text;
 };
 

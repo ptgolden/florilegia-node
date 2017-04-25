@@ -14,12 +14,12 @@
 #define JSON_NOEXCEPTION 1
 #include "json.hpp"
 
-
 using nlohmann::json;
 
 using std::string;
 using std::list;
-using std::rewind;
+
+#define return_void_if_not_markup(annot) if (!POPPLER_IS_ANNOT_MARKUP(annot)) return
 
 enum AnnotationAction {
 	ANNOTATION_ACTION_UNSUPPORTED,
@@ -30,10 +30,15 @@ enum AnnotationAction {
 };
 
 struct OacAnnot {
-	int page;
 	AnnotationAction action;
+
 	string body_text;
 	string body_image;
+	string body_subject;
+	string body_color;
+
+	int page;
+	string target_rect;
 	string target_text;
 };
 
@@ -91,6 +96,40 @@ oac_annot_set_annotation_action(OacAnnot *oac_annot, PopplerAnnot *annot) {
 	}
 
 	oac_annot->action = action;
+	return;
+}
+
+void
+oac_annot_set_body_subject(OacAnnot *oac_annot, PopplerAnnot *annot) {
+	char *subject;
+
+	return_void_if_not_markup(annot);
+
+	subject = poppler_annot_markup_get_subject(POPPLER_ANNOT_MARKUP(annot));
+
+	if (subject != NULL)
+		oac_annot->body_subject += subject;
+
+	return;
+}
+
+void
+oac_annot_set_body_color(OacAnnot *oac_annot, PopplerAnnot *annot) {
+	PopplerColor *color;
+	char css_color[8];
+
+	color = poppler_annot_get_color(annot);
+
+	if (color == NULL)
+		return;
+
+	snprintf(css_color, sizeof(css_color),
+		 "#%02x%02x%02x", color->red >> 8, color->green >> 8, color->blue >> 8);
+
+	g_free(color);
+
+	oac_annot->body_color += css_color;
+
 	return;
 }
 
@@ -204,6 +243,7 @@ oac_annot_to_json(OacAnnot *oacAnnot) {
 
 	out["page"] = oacAnnot->page;
 	out["motivation"] = annotation_action_get_motivation(oacAnnot->action);
+	out["target_rect"] = oacAnnot->target_rect;
 
 	if (oacAnnot->body_text.length() > 0)
 		out["body_text"] = oacAnnot->body_text;
@@ -211,22 +251,40 @@ oac_annot_to_json(OacAnnot *oacAnnot) {
 	if (oacAnnot->body_image.length() > 0)
 		out["stamp_body"] = oacAnnot->body_image;
 
+	if (oacAnnot->body_subject.length() > 0)
+		out["body_subject"] = oacAnnot->body_subject;
+
+	if (oacAnnot->body_color.length() > 0)
+		out["body_color"] = oacAnnot->body_color;
+
 	if (oacAnnot->target_text.length() > 0)
 		out["target_text"] = oacAnnot->target_text;
 
 	return out.dump();
 }
 
+string
+format_coord(double p) {
+	return std::to_string((int)(p));
+}
+
 void
 oac_annot_from_mapping(OacAnnot *oac_annot, PopplerAnnotMapping *m, PopplerPage *p) {
-	oac_annot->page = poppler_page_get_index(p) + 1;
 	oac_annot_set_annotation_action(oac_annot, m->annot);
 
 	if (oac_annot->action == ANNOTATION_ACTION_UNSUPPORTED)
 		return;
 
+	oac_annot->page = poppler_page_get_index(p) + 1;
+	oac_annot->target_rect = format_coord(m->area.x1) + ","
+			       + format_coord(m->area.y1) + ","
+			       + format_coord(m->area.x2) + ","
+			       + format_coord(m->area.y2);
+
 	oac_annot_set_body_text(oac_annot, m->annot);
 	oac_annot_set_body_image(oac_annot, p, m->annot, &m->area);
+	oac_annot_set_body_subject(oac_annot, m->annot);
+	oac_annot_set_body_color(oac_annot, m->annot);
 	oac_annot_set_target_text(oac_annot, m->annot, p);
 
 	return;
