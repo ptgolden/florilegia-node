@@ -7,8 +7,15 @@
 				"cpp/oac.cc"
 			],
 			"libraries": [
-				"-lpoppler-glib",
-				"-Wl,-rpath='$$ORIGIN'/../../libpoppler/lib/"
+			],
+			"conditions": [
+				['OS=="linux"', { 'libraries': [
+					"<!(pwd)/libpoppler/lib/libpoppler-glib.so",
+					"-Wl,-rpath='$$ORIGIN'/../../libpoppler/lib/"
+				]}],
+				['OS=="mac"', { 'libraries': [
+					"@rpath/../../libpoppler/lib/"
+				]}]
 			],
 			"include_dirs": [
 				"<!(pwd)/libpoppler/include/poppler",
