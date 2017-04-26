@@ -23,5 +23,5 @@ $(POPPLER_SRC_DIR): $(POPPLER_ARCHIVE_FILE) $(PATCHES)
 
 lib/libpoppler-glib.so: $(POPPLER_SRC_DIR) $(PATCHES)
 	cd $< && ./configure --prefix=$(DIR) --disable-poppler-qt4 --disable-poppler-cpp --disable-poppler-qt5 --disable-splash-output --disable-utils --disable-gtk-test
-	cd $< && make -j --silent
-	cd $< && make install --silent
+	cd $< && make -j
+	cd $< && make install
