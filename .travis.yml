@@ -18,6 +18,7 @@ addons:
                         - libglib2.0-dev
                         - libcairo2-dev
                         - libpng-dev
+                        - gir1.2-glib-2.0
 
 before_install:
         - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
