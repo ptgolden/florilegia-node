@@ -1,6 +1,6 @@
 #include <string>
 #include <list>
-#include <poppler.h>
+#include <glib/poppler.h>
 
 using std::string;
 using std::list;

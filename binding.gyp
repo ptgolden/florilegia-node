@@ -21,13 +21,13 @@
 				"<!(pwd)/libpoppler/include/poppler",
 				"<!(node -e \"require('nan')\")",
 				"<!(node -e \"require('streaming-worker-sdk')\")",
-				"<!@(pkg-config poppler-glib --cflags-only-I | sed s/-I//g)",
+				"<!@(pkg-config glib-2.0 cairo --cflags-only-I | sed s/-I//g)",
 				"lib"
 			],
 			"cflags": [
 				"-Wall",
-				"-std=c++11",
-				"<!@(pkg-config --cflags-only-other poppler-glib)"
+				"-pthread",
+				"-std=c++11"
 			]
 		}
   ]

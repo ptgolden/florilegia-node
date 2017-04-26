@@ -15,7 +15,7 @@ clean:
 	rm -rf include lib $(POPPLER_SRC_DIR) $(POPPLER_ARCHIVE_FILE) share src
 
 $(POPPLER_ARCHIVE_FILE):
-	wget --continue $(POPPLER_ARCHIVE_URL)
+	curl -O $(POPPLER_ARCHIVE_URL)
 
 $(POPPLER_SRC_DIR): $(POPPLER_ARCHIVE_FILE) $(PATCHES)
 	tar -xJf $<
