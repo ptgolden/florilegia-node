@@ -21,5 +21,6 @@ addons:
                         - gir1.2-glib-2.0
 
 before_install:
+        - dpkg -l
         - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
         - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install glib cairo libpng; fi
