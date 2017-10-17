@@ -10,9 +10,9 @@
 #include <glib/poppler.h>
 #include <cairo.h>
 
-#include "base64.h"
+#include "../lib/base64.h"
 #define JSON_NOEXCEPTION 1
-#include "json.hpp"
+#include "../lib/json.hpp"
 
 using nlohmann::json;
 

@@ -8,9 +8,7 @@
 #include "nan.h"
 #include "streaming-worker.h"
 
-// In lib
-#include "base64.h"
-
+#include "../lib/base64.h"
 #include "oac.h"
 
 class AnnotationWorker : public StreamingWorker {

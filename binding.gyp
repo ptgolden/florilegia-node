@@ -7,27 +7,25 @@
 				"cpp/oac.cc"
 			],
 			"libraries": [
+				"-lpoppler-glib -Llibpoppler/lib"
 			],
 			"conditions": [
 				['OS=="linux"', { 'libraries': [
-					"<!(pwd)/libpoppler/lib/libpoppler-glib.so",
 					"-Wl,-rpath='$$ORIGIN'/../../libpoppler/lib/"
 				]}],
 				['OS=="mac"', { 'libraries': [
-					"@rpath/../../libpoppler/lib/"
+					"-Wl,-rpath=@rpath/../../libpoppler/lib/"
 				]}]
 			],
 			"include_dirs": [
 				"<!(pwd)/libpoppler/include/poppler",
 				"<!(node -e \"require('nan')\")",
 				"<!(node -e \"require('streaming-worker-sdk')\")",
-				"<!@(pkg-config glib-2.0 cairo --cflags-only-I | sed s/-I//g)",
-				"lib"
 			],
 			"cflags": [
 				"-Wall",
-				"-pthread",
-				"-std=c++11"
+				"-std=c++11",
+				"<!@(pkg-config glib-2.0 cairo --cflags)",
 			]
 		}
   ]
