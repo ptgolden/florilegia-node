@@ -16,14 +16,16 @@ enum AnnotationAction {
 struct OacAnnot {
 	AnnotationAction action;
 
-	string body_text;
-	string body_image;
-	string body_subject;
-	string body_color;
-
 	int page;
 	string target_rect;
 	string target_text;
+
+	string body_text;
+	string body_image;
+	string body_creator;
+	string body_subject;
+	string body_color;
+
 };
 
 string oac_annot_to_json(OacAnnot *oac_annot);

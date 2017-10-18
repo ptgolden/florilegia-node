@@ -32,14 +32,16 @@ enum AnnotationAction {
 struct OacAnnot {
 	AnnotationAction action;
 
-	string body_text;
-	string body_image;
-	string body_subject;
-	string body_color;
-
 	int page;
 	string target_rect;
 	string target_text;
+
+	string body_text;
+	string body_image;
+	string body_creator;
+	string body_subject;
+	string body_color;
+
 };
 
 struct png_stream_closure_t {
@@ -109,6 +111,23 @@ oac_annot_set_body_subject(OacAnnot *oac_annot, PopplerAnnot *annot) {
 
 	if (subject != NULL)
 		oac_annot->body_subject += subject;
+
+	return;
+}
+
+void
+oac_annot_set_body_creator(OacAnnot *oac_annot, PopplerAnnot *annot) {
+	string creator_text;
+	gchar *creator;
+
+	return_void_if_not_markup(annot);
+
+	creator = poppler_annot_markup_get_label(POPPLER_ANNOT_MARKUP(annot));
+
+	if (creator != NULL)
+		creator_text.assign(creator);
+
+	oac_annot->body_creator = creator_text;
 
 	return;
 }
@@ -254,6 +273,9 @@ oac_annot_to_json(OacAnnot *oacAnnot) {
 	if (oacAnnot->body_subject.length() > 0)
 		out["body_subject"] = oacAnnot->body_subject;
 
+	if (oacAnnot->body_creator.length() > 0)
+		out["body_creator"] = oacAnnot->body_creator;
+
 	if (oacAnnot->body_color.length() > 0)
 		out["body_color"] = oacAnnot->body_color;
 
@@ -285,6 +307,7 @@ oac_annot_from_mapping(OacAnnot *oac_annot, PopplerAnnotMapping *m, PopplerPage 
 	oac_annot_set_body_image(oac_annot, p, m->annot, &m->area);
 	oac_annot_set_body_subject(oac_annot, m->annot);
 	oac_annot_set_body_color(oac_annot, m->annot);
+	oac_annot_set_body_creator(oac_annot, m->annot);
 	oac_annot_set_target_text(oac_annot, m->annot, p);
 
 	return;

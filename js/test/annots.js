@@ -80,13 +80,15 @@ const cases = [
   }
 ]
 
+// Skip the fields that could be different from one program to another
 function withoutDifferingFields(annot) {
   const obj = {}
 
   const differingFields = [
     'body_color',
     'body_subject',
-    'target_rect'
+    'body_creator',
+    'target_rect',
   ]
 
   for (let field in annot) {
