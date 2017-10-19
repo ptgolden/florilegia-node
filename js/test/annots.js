@@ -88,6 +88,7 @@ function withoutDifferingFields(annot) {
     'body_color',
     'body_subject',
     'body_creator',
+    'body_modified',
     'target_rect',
   ]
 

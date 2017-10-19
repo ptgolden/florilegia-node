@@ -23,6 +23,7 @@ struct OacAnnot {
 	string body_text;
 	string body_image;
 	string body_creator;
+	string body_modified;
 	string body_subject;
 	string body_color;
 

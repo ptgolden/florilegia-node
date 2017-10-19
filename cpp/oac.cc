@@ -16,6 +16,7 @@
 
 using nlohmann::json;
 
+using std::to_string;
 using std::string;
 using std::list;
 
@@ -39,6 +40,7 @@ struct OacAnnot {
 	string body_text;
 	string body_image;
 	string body_creator;
+	string body_modified;
 	string body_subject;
 	string body_color;
 
@@ -128,6 +130,25 @@ oac_annot_set_body_creator(OacAnnot *oac_annot, PopplerAnnot *annot) {
 		creator_text.assign(creator);
 
 	oac_annot->body_creator = creator_text;
+
+	return;
+}
+
+void
+oac_annot_set_body_modified(OacAnnot *oac_annot, PopplerAnnot *annot) {
+	string time_text;
+	gchar *date;
+	time_t timet = 0;
+
+	date = poppler_annot_get_modified(annot);
+
+	if (poppler_date_parse(date, &timet)) {
+		oac_annot->body_modified = to_string(timet);
+	} else if (date != NULL) {
+		oac_annot->body_modified += date;
+	}
+
+	g_free(date);
 
 	return;
 }
@@ -276,6 +297,9 @@ oac_annot_to_json(OacAnnot *oacAnnot) {
 	if (oacAnnot->body_creator.length() > 0)
 		out["body_creator"] = oacAnnot->body_creator;
 
+	if (oacAnnot->body_modified.length() > 0)
+		out["body_modified"] = oacAnnot->body_modified;
+
 	if (oacAnnot->body_color.length() > 0)
 		out["body_color"] = oacAnnot->body_color;
 
@@ -308,6 +332,7 @@ oac_annot_from_mapping(OacAnnot *oac_annot, PopplerAnnotMapping *m, PopplerPage 
 	oac_annot_set_body_subject(oac_annot, m->annot);
 	oac_annot_set_body_color(oac_annot, m->annot);
 	oac_annot_set_body_creator(oac_annot, m->annot);
+	oac_annot_set_body_modified(oac_annot, m->annot);
 	oac_annot_set_target_text(oac_annot, m->annot, p);
 
 	return;
