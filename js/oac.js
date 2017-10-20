@@ -133,7 +133,7 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
 
     triples = triples.concat(
       $imageURI({
-        'dc:subject': createLiteral(annotation.body_subject),
+        'dc:identifier': createLiteral(annotation.body_subject),
         'dc:format': createLiteral('image/png'),
         'rdf:type': ['dctype:Image', 'cnt:ContentAsBase64'],
         'cnt:bytes': createLiteral(annotation.stamp_body),
