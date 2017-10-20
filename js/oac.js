@@ -1,9 +1,6 @@
 "use strict";
 
-const fs = require('fs')
-    , path = require('path')
-    , glob = require('glob')
-    , through = require('through2')
+const through = require('through2')
     , rdfBuilder = require('rdf-builder')
     , { createLiteral } = require('n3').Util
     , prefixes = require('./prefixes')
@@ -18,6 +15,10 @@ function fnState(opts) {
       ? rdfBuilder({ prefixes, graph: opts.graphURI })
       : rdfBuilder({ prefixes })
   }
+}
+
+function isNumeric(string) {
+  return /^\d+$/.test(string)
 }
 
 function annotTransform(opts) {
@@ -49,8 +50,16 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
 
   let triples = []
 
-  const { page, motivation, body_text, target_text } = annotation
-      , makeAnnotURI = p => $(mintAnnotURI(p, i, annotation, opts))
+  const {
+    page,
+    motivation,
+    body_text,
+    body_modified,
+    body_creator,
+    target_text
+  } = annotation
+
+  const makeAnnotURI = p => $(mintAnnotURI(p, i, annotation, opts))
 
   const $annot = makeAnnotURI()
       , $target = makeAnnotURI('target')
@@ -75,6 +84,20 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
       'oa:conformsTo': 'http://tools.ietf.org/rfc/rfc3778',
     })
   )
+
+  if (body_modified && isNumeric(body_modified)) {
+    triples.push(
+      $annot('dc:modified')(createLiteral(
+        new Date(parseInt(body_modified)).toISOString(),
+        prefixes.xsd + 'date'
+      ))
+    )
+  }
+
+  if (body_creator) {
+    triples.push($annot('dc:creator')(createLiteral(body_creator)));
+  }
+
 
   // Text selector
   if (target_text) {

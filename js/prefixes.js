@@ -6,4 +6,5 @@ module.exports = {
   bibo: require('lov-ns/bibo'),
   rdf: require('lov-ns/rdf'),
   rdfs: require('lov-ns/rdfs'),
+  xsd: require('lov-ns/xsd'),
 }
