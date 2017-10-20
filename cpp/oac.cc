@@ -138,12 +138,13 @@ void
 oac_annot_set_body_modified(OacAnnot *oac_annot, PopplerAnnot *annot) {
 	string time_text;
 	gchar *date;
-	time_t timet = 0;
+	time_t timet;
 
 	date = poppler_annot_get_modified(annot);
 
-	if (poppler_date_parse(date, &timet)) {
-		oac_annot->body_modified = to_string(timet);
+	if (date != NULL && poppler_date_parse(date, &timet)) {
+		// Not sure why, but need to add three more digits...
+		oac_annot->body_modified = to_string(timet) + "000";
 	} else if (date != NULL) {
 		oac_annot->body_modified += date;
 	}
