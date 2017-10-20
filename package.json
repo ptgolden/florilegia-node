@@ -1,6 +1,6 @@
 {
   "name": "pdf2oac",
-  "version": "6.2.2",
+  "version": "6.3.0",
   "description": "",
   "main": "js/index.js",
   "scripts": {
