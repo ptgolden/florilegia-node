@@ -89,7 +89,7 @@ function annotToTriples(annotation, opts={}, state=fnState(opts)) {
     triples.push(
       $annot('dc:modified')(createLiteral(
         new Date(parseInt(body_modified)).toISOString(),
-        prefixes.xsd + 'date'
+        prefixes.xsd + 'dateTime'
       ))
     )
   }
