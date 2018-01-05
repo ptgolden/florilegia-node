@@ -19,8 +19,13 @@
 			],
 			"include_dirs": [
 				"<!(pwd)/libpoppler/include/poppler",
-				"<!(node -e \"require('nan')\")",
-				"<!(node -e \"require('streaming-worker-sdk')\")",
+				"<!@(node -e \"console.log(require('node-addon-api').include)\")"
+			],
+			"dependencies": [
+				"<!(node -e \"console.log(require('node-addon-api').gyp)\")"
+			],
+			"defines": [
+				"NAPI_DISABLE_CPP_EXCEPTIONS"
 			],
 			"cflags": [
 				"-Wall",

@@ -29,12 +29,8 @@
     "jsonld": "^0.4.11",
     "lov-ns": "^1.1.1",
     "n3": "^0.8.4",
-    "nan": "^2.4.0",
-    "pump": "^1.0.2",
+    "node-addon-api": "^1.1.0",
     "rdf-builder": "^1.1.2",
-    "streaming-worker": "^1.0.1",
-    "streaming-worker-sdk": "^0.9.3",
-    "through2": "^2.0.3",
     "yargs": "^7.0.2"
   }
 }

@@ -1,20 +1,42 @@
 "use strict";
 
-const pump = require('pump')
-    , through = require('through2')
-    , streamingWorker = require('streaming-worker')
-    , popplerAddon = require('bindings')('pdf2oac.node')
+const { Readable } = require('stream')
+    , { extract }  = require('bindings')('pdf2oac.node')
 
 module.exports = function parseAnnots(pdfFilename) {
-  const worker = streamingWorker(popplerAddon.path, { pdfFilename })
+  let startedExtracting = false
+    , finished = false
+    , extractedAnnots
 
-  return pump(
-    worker.from.stream(),
-    through.obj(function (data, enc, cb) {
-      this.push(JSON.parse(data[1]));
-      cb();
-    }),
-    err => {
-      if (err) throw err;
-    })
+  return new Readable({
+    objectMode: true,
+    read() {
+      if (!startedExtracting) {
+        startedExtracting = true;
+        extract(pdfFilename, (err, annots) => {
+          if (err) {
+            this.emit('error', err);
+            finished = true;
+            return
+          }
+
+          extractedAnnots = annots;
+
+          if (!extractedAnnots.length) {
+            this.push(null);
+          } else {
+            this.push(extractedAnnots.shift());
+          }
+        })
+      } else if (!finished) {
+        while (extractedAnnots.length) {
+          if (!this.push(extractedAnnots.shift())) {
+            break;
+          }
+        }
+
+        this.push(null);
+      }
+    }
+  })
 }

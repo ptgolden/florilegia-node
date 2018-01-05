@@ -30,5 +30,6 @@ struct OacAnnot {
 };
 
 string oac_annot_to_json(OacAnnot *oac_annot);
+string annotation_action_get_motivation(AnnotationAction action);
 
 list<OacAnnot> poppler_document_get_oac_annots(PopplerDocument *doc, int page_number);
