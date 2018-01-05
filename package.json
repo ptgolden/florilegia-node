@@ -4,7 +4,7 @@
   "description": "",
   "main": "js/index.js",
   "scripts": {
-    "test": "tape js/test/*.js",
+    "test": "blue-tape js/test/*.js",
     "install": "cd libpoppler && make && cd ../ && node-gyp rebuild",
     "clean": "cd libpoppler && make clean && cd ../ && node-gyp clean"
   },
