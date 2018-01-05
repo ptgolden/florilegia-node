@@ -5,6 +5,7 @@ const { Readable } = require('stream')
 
 module.exports = function parseAnnots(pdfFilename) {
   let startedExtracting = false
+    , finishedExtracting = false
     , finished = false
     , extractedAnnots
 
@@ -20,6 +21,7 @@ module.exports = function parseAnnots(pdfFilename) {
             return
           }
 
+          finishedExtracting = true;
           extractedAnnots = annots;
 
           if (!extractedAnnots.length) {
@@ -28,14 +30,16 @@ module.exports = function parseAnnots(pdfFilename) {
             this.push(extractedAnnots.shift());
           }
         })
-      } else if (!finished) {
+      } else if (finishedExtracting && !finished) {
         while (extractedAnnots.length) {
           if (!this.push(extractedAnnots.shift())) {
             break;
           }
         }
 
-        this.push(null);
+        if (!extractedAnnots.length) {
+          this.push(null);
+        }
       }
     }
   })
