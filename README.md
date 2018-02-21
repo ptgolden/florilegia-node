@@ -1,21 +1,20 @@
 # pdf2oac
 
-Extract annotations from PDF files and convert them to the [Open Annotation
-Core](http://www.openannotation.org/spec/core/) data model.
+Extract annotations from PDF files and convert them to RDF using the [Web Annotation Vocabulary](https://www.w3.org/TR/annotation-vocab/).
 
-Requires libpoppler and a C compiler that supports C++11.
+Requires C compiler that supports C++11.
 
 # Installation
 
-pdf2oac requires running a patched version of libpoppler that is built from source. The patches allow handling stamp annotations and rendering annotations to images. They can be found in the `libpoppler/patches` directory.
-
-To patch and build the patched libpoppler, and then build the Node extension, all you need to do is run `npm install`. However, for this to run successfully will require several dependencies to be installed through your OS's package manager:
+pdf2oac requires running a patched version of libpoppler that is built from source. The patches allow handling stamp annotations and rendering annotations to images. They can be found in the `libpoppler/patches` directory. To successfully build the project, you must have a C compiler that supports C++11, as well several packages that should be installed through your operating system's package manager:
 
   * libcairo
   * libglib2.0
   * libpixman
   * libfreetype2
   * libpng
+
+Installation is done through npm, using the command `npm install`.
 
 # Node.js library
 
@@ -29,7 +28,7 @@ pdf2oac('~/Documents/annotated_document.pdf')
     console.log(triple);
   })
   .on('close', () => {
-    console.log('all done!');
+    console.log('No more annotations');
   })
 ```
 
@@ -43,9 +42,7 @@ const pdf2oac = require('pdf2oac')
 
 Returns a ReadableStream that will extract annotations from the given pdf and stream objects with `subject`, `predicate`, `object`, and possibly `graph` attributes.
 
-Available options (all optional):
-
-  * `imageDirectory`: pdf2oac uses the program [`pdfimages`](https://en.wikipedia.org/wiki/Pdfimages) (packaged with poppler-utils) to extract annotation images. If this option is provided, the given directory will be used to temporarily store the image files produced by `pdfimages`. If it is omitted, a temporary directory will be created automatically and deleted after completion.
+Available options:
 
   * `pdfURI`: The URI that will be used as the RDF resource representing the PDF file. Defaults to `file://$pdfFilename`.
 
