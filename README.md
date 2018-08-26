@@ -14,6 +14,14 @@ pdf2oac requires running a patched version of libpoppler that is built from sour
   * libfreetype2
   * libpng
 
+Somewhat ridiculously, it also relies on a system-provided package for libpoppler's glib bindings (libpoppler-glib).
+
+On Ubuntu 18.04, all of these requirements can be installed by running the command:
+
+```
+sudo apt install libcairo2-dev libglib2.0-dev libpixman-1-dev libfreetype6-dev libpng-dev libpoppler-glib-dev
+```
+
 Installation is done through npm, using the command `npm install`.
 
 # Node.js library
